@@ -1,0 +1,29 @@
+# Global date window (split-safe)
+min_date: "2022-07-01"
+max_date: "2025-08-31"
+
+benchmarks:
+  - CSPX.L
+  - IWDA.AS
+
+stocks:
+  - AMZN
+  - NFLX
+  - ADBE
+  - NOW
+  - AMD
+  - ISRG
+  - SNOW
+  - CRWD
+  - DDOG
+  - SHOP
+  - ADYEN.AS
+  - SPOT
+  - DHER.DE
+  - ZAL.DE
+  - SE
+  - BILI
+  - PDD
+  - CPNG
+  - MELI
+  - NU
