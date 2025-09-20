@@ -1,0 +1,23 @@
+symbol,label,bucket,region,sector
+CSPX.L,iShares Core S&P 500 (Acc),benchmark,Global,ETF
+IWDA.AS,iShares Core MSCI World (Acc),benchmark,Global,ETF
+AMZN,Amazon,stock,US,Consumer Discretionary
+NFLX,Netflix,stock,US,Communication Services
+ADBE,Adobe,stock,US,Information Technology
+NOW,ServiceNow,stock,US,Information Technology
+AMD,Advanced Micro Devices,stock,US,Information Technology
+ISRG,Intuitive Surgical,stock,US,Health Care
+SNOW,Snowflake,stock,US,Information Technology
+CRWD,CrowdStrike,stock,US,Information Technology
+DDOG,Datadog,stock,US,Information Technology
+SHOP,Shopify,stock,Canada,Information Technology
+ADYEN.AS,Adyen,stock,Europe,Information Technology
+SPOT,Spotify,stock,Europe,Communication Services
+DHER.DE,Delivery Hero,stock,Europe,Consumer Discretionary
+ZAL.DE,Zalando,stock,Europe,Consumer Discretionary
+SE,Sea Ltd,stock,Asia,Communication Services
+BILI,Bilibili,stock,Asia,Communication Services
+PDD,PDD Holdings,stock,Asia,Consumer Discretionary
+CPNG,Coupang,stock,Asia,Consumer Discretionary
+MELI,MercadoLibre,stock,LatAm,Consumer Discretionary
+NU,Nu Holdings,stock,LatAm,Financials
