@@ -1,6 +1,14 @@
 # excluded project folders
 /data/
-/outputs/
+/results/
+/scripts/old/
+
+
+# excluded files
+/notebooks/testing.ipynb
+
+# random file?
+.DS_Store
 
 
 
