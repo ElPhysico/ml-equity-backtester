@@ -1,0 +1,77 @@
+# Global date window (split-safe)
+min_date: "2021-12-09"
+max_date: "2025-08-31"
+
+benchmarks:
+  - CSPX.L
+  - IWDA.AS
+
+stocks:
+  - ABNB
+  - ACAD
+  - ADBE
+  - ADYEN.AS
+  - AFRM
+  - AI
+  - AMD
+  - APP
+  - AR
+  - BB
+  - BIIB
+  - BILI
+  - BMBL
+  - BRK.B
+  - CFLT
+  - CIEN
+  - COIN
+  - CPNG
+  - CRSP
+  - CRSR
+  - CRWD
+  - DDOG
+  - DHER.DE
+  - DOCS
+  - DOCU
+  - EL
+  - ESTC
+  - EW
+  - FVRR
+  - HIMS
+  - INCY
+  - ISRG
+  - LI
+  - LXRX
+  - LYFT
+  - MCO
+  - MELI
+  - NET
+  - NFLX
+  - NIO
+  - NOW
+  - NU
+  - OKTA
+  - PATH
+  - PDD
+  - PINS
+  - PLTR
+  - PTON
+  - PUBM
+  - RBLX
+  - RIVN
+  - ROKU
+  - SE
+  - SNOW
+  - SPOT
+  - TEAM
+  - TWLO
+  - TWST
+  - UBER
+  - UPWK
+  - W
+  - WBD
+  - XPEV
+  - Z
+  - ZAL.DE
+  - ZI
+  - ZM
+  - ZS

@@ -22,5 +22,6 @@ pip = ">=25.2,<26"
 [tasks]
 download_init = "python scripts/download_data.py --mode init"
 download_update = "python scripts/download_data.py --mode update"
+download = "python scripts/download_data.py --mode init --tickers TMO"
 
 benchmarks = "python scripts/benchmarks.py"

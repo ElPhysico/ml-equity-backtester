@@ -2,6 +2,7 @@
 /data/
 /results/
 /scripts/old/
+/transition_prompts
 
 
 # excluded files
