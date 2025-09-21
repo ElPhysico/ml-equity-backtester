@@ -54,32 +54,32 @@ def main():
     if not flagged.empty:
         logging.warning("Suspicious price moves detected (potential splits or bad data). Please investigate.")
 
+    cost_bps=5.0
     bench_equities = []
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for bench in benchmarks:
-        eq = buy_and_hold(px[[bench]], cost_bps=5.0)
-        bench_equities.append(eq)
+        res = buy_and_hold(px[[bench]], cost_bps=cost_bps)
+        bench_equities.append(res.equity)
         out = out_dir / f"{bench}_buy_and_hold.csv"
-        eq.to_csv(out, header=True)
+        res.equity.to_csv(out, header=True)
         logging.info(f"Wrote [{bench}] benchmark equity to {out}")
 
-    cost_bps=5.0
-    stock_eq = buy_and_hold(px[stocks], cost_bps=cost_bps)
+    stock_res = buy_and_hold(px[stocks], cost_bps=cost_bps)
     out = out_dir / "all_stocks_equal_weight_buy_and_hold.csv"
-    stock_eq.to_csv(out, header=True)
+    stock_res.equity.to_csv(out, header=True)
     logging.info(f"Wrote all-stocks ({len(stocks)}) equal weight buy-and-hold equity to {out}")
 
-    m_rebal_eq = monthly_rebalance(px[stocks], cost_bps=cost_bps)
+    m_rebal_res = monthly_rebalance(px[stocks], cost_bps=cost_bps)
     out = out_dir / "all_stocks_monthly_rebalance.csv"
-    m_rebal_eq.to_csv(out, header=True)
+    m_rebal_res.equity.to_csv(out, header=True)
     logging.info(f"Wrote all-stocks ({len(stocks)}) monthly-rebalance equity to {out}")
 
 
     # plotting
     curves = {bench: s for bench, s in zip(benchmarks, bench_equities)}
-    curves[f"Stocks ({len(stocks)}) (Equal-Weight B&H)"] = stock_eq
-    curves[f"Stocks ({len(stocks)}) (Equal-Weight Monthly-Rebalance)"] = m_rebal_eq
+    curves[f"Stocks ({len(stocks)}) (Equal-Weight B&H)"] = stock_res.equity
+    curves[f"Stocks ({len(stocks)}) (Equal-Weight Monthly-Rebalance)"] = m_rebal_res.equity
 
     df_plot = pd.concat(curves, axis=1)  # columns = strategy names
     df_plot = df_plot.dropna(how="all")  # safety
