@@ -1,9 +1,14 @@
 # src/mlbt/strategies/monthly_rebalance.py
 import pandas as pd
-from typing import Optional
+from mlbt.strategies.result import StrategyResult
+from typing import Dict, Optional
 
 
-def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps: float = 0.0) -> pd.Series:
+def monthly_rebalance(px: pd.DataFrame,
+                      weights: Optional[dict] = None,
+                      cost_bps: float = 0.0,
+                      name: Optional[str] = None
+) -> StrategyResult:
     """
     Equal-weight (or user-specified) monthly rebalance:
     - Identify month-end trading days and rebalance on each of those dates.
@@ -22,12 +27,14 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
     cost_bps : float, default 0.0
         One-way transaction cost in basis points. Charged once at start and on
         each rebalance date as turnover * (cost_bps/1e4).
+    name : str, optional
+        Name for the returned StrategyResult. If None, defaults to
+        f"EW_RB_{ticker}" or f"W_RB_{ticker}" if weights are not None.
 
     Returns
     -------
-    pd.Series
-        Daily equity curve (post-cost), index = trading dates from t0 onward,
-        name = 'equity'.
+    StrategyResult
+        StrategyResult with daily equity, monthly rebal_dates, one-way turnover (excluding entry), and entry_cost_frac.
 
     Notes
     -----
@@ -60,6 +67,7 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
     eq = 1.0
     equity = [eq]
     charged_init = False
+    turnover_items: Dict[pd.Timestamp, float] = {}
 
     px = px.loc[t0:]
     daily_rets = px.ffill().pct_change().fillna(0.0)
@@ -74,6 +82,8 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
             cost_frac = (cost_bps / 1e4) * turnover
             eq *= (1.0 - cost_frac)
             w = w_target
+
+            turnover_items[date] = turnover
         # elif date == rebal_dates[-1]:
         #     # end of portfolio, we sell everything
             # eq *= (1.0 - cost_bps / 1e4)
@@ -83,7 +93,30 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
             charged_init = True
         
         equity.append(eq)
-    
-    eq = pd.Series(equity, index=px.index, name="equity")
 
-    return eq
+    if name is None:
+        if len(tickers) < 3:
+            ticker = "_".join(tickers.values)
+        else:
+            ticker = "multi_ticker"
+        name = f"EW_BH_{ticker}"
+    
+    eq = pd.Series(equity, index=px.index, name=name)
+
+    turnover_ser = (
+        pd.Series(turnover_items, name="turnover")
+        .sort_index()
+        .astype("float64")
+    )
+
+    res = StrategyResult(
+        name=name,
+        equity=eq,
+        rebal_dates=rebal_dates,
+        turnover=turnover_ser,
+        entry_cost_frac=cost_bps / 1e4,
+        weights=weights if weights is not None else None,
+        params={"cost_bps": cost_bps, "tickers": list(tickers)}
+    )
+
+    return res

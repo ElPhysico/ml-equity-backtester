@@ -1,8 +1,13 @@
 # src/mlbt/strategies/buy_and_hold.py
 import pandas as pd
+from mlbt.strategies.result import StrategyResult
+from typing import Optional
 
 
-def buy_and_hold(px: pd.DataFrame, cost_bps: float = 0.0) -> pd.Series:
+def buy_and_hold(px: pd.DataFrame,
+                 cost_bps: float = 0.0,
+                 name: Optional[str] = None
+) -> StrategyResult:
     """
     Equal-weight buy-and-hold:
     - On the first valid date (t0), identify tickers with prices at t0.
@@ -17,12 +22,14 @@ def buy_and_hold(px: pd.DataFrame, cost_bps: float = 0.0) -> pd.Series:
         are excluded from the initial portfolio.
     cost_bps : float, default 0.0
         One-way transaction cost in basis points charged once at portfolio entry.
+    name : str, optional
+        Name for the returned StrategyResult. If None, defaults to
+        f"EW_BH_{ticker}".
 
     Returns
     -------
-    pd.Series
-        Daily equity curve (post-cost), index = trading dates from t0 onward,
-        name = 'equity'.
+    StrategyResult
+        StrategyResult with daily equity, initial cost_frac, and additional params.
 
     Notes
     -----
@@ -45,6 +52,22 @@ def buy_and_hold(px: pd.DataFrame, cost_bps: float = 0.0) -> pd.Series:
     eq = (1.0 - cost_bps / 1e4) * (norm * w0).sum(axis=1)
     # the below effectively changes the return of the first day by the buy cost
     eq[t0] = 1.0
-    eq.name = "equity"
 
-    return eq
+    if name is None:
+        if len(tickers) < 3:
+            ticker = "_".join(tickers.values)
+        else:
+            ticker = "multi_ticker"
+        name = f"EW_BH_{ticker}"
+
+    eq.name = name
+
+    res = StrategyResult(
+        name=name,
+        equity=eq,
+        rebal_dates=pd.DatetimeIndex([]),
+        entry_cost_frac=cost_bps / 1e4,
+        params={"cost_bps": cost_bps, "tickers": list(tickers)}
+    )
+
+    return res
