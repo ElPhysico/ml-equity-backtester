@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 from mlbt.log_utils import setup_logging
 from mlbt.yaml_io import read_yaml
 from mlbt.load_prices import load_prices, flag_suspect_splits
-from mlbt.buy_and_hold import buy_and_hold
-from mlbt.monthly_rebalance import monthly_rebalance
+from mlbt.strategies.buy_and_hold import buy_and_hold
+from mlbt.strategies.monthly_rebalance import monthly_rebalance
 
 
 # ---------------- CLI ----------------
