@@ -3,10 +3,11 @@
 Cross-sectional momentum: M-month lookback, skip S most-recent months (e.g., 12-1).
 Provides a reusable signal builder and a simple top-N equal-weight strategy runner.
 """
-from typing import Optional
+from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
 from math import ceil
+from mlbt.strategies.result import StrategyResult
 
 
 def compute_momentum_m_skip_signal(
@@ -15,7 +16,7 @@ def compute_momentum_m_skip_signal(
     lookback_months: int = 12,
     skip_months: int = 1,
     min_hist_ratio: float = 0.95,
-    use_log: bool = True,
+    use_log: bool = True
 ) -> pd.DataFrame:
     """
     Build month-end cross-sectional momentum signals using an M-month lookback that skips the most recent S months (e.g., 12-1 momentum).
@@ -83,14 +84,14 @@ def cross_sectional_momentum_topn(
     lookback_months: int = 12,
     skip_months: int = 1,
     min_hist_ratio: float = 0.95,
-    name: Optional[str] = None,
+    name: Optional[str] = None
 ) -> pd.Series:
     """
     Run a simple cross-sectional momentum strategy:
     - At each month-end, rank tickers by the M-skip-S momentum signal.
     - Select the top-N tickers, equal-weight them, and hold for one month.
     - Apply one-way bps on turnover each rebalance.
-    - Output a monthly equity curve (post-cost).
+    - Output a StrategyResult.
 
     Parameters
     ----------
@@ -113,14 +114,14 @@ def cross_sectional_momentum_topn(
 
     Returns
     -------
-    pd.Series
-        Monthly equity curve (post-cost), index = month-ends, name as above.
+    StrategyResult
+        StrategyResult with daily equity, monthly rebal_dates, one-way turnover (excluding entry), entry_cost_frac, weights, and ticker selection.
 
     Notes
     -----
     - Uses equal weights among selected names (no score-weighting).
     - The first tradable month occurs after a valid signal can be computed.
-    - Turnover is computed as 0.5 * sum(|w_new - w_old|); first invested month
+    - Turnover is computed as sum(|w_new - w_old|); first invested month
       incurs full entry cost.
     """
     # create trading signal
@@ -140,7 +141,7 @@ def cross_sectional_momentum_topn(
     s = pd.Series(px.index, index=px.index)
     rebal_dates = pd.DatetimeIndex(s.groupby(px.index.to_period('M')).last().values)
     t0 = rebal_dates[0] # first trading day where we allocate
-    
+
     # compute initial portfolio allocation
     this_signal = signal[signal.index == t0.to_period("M")].iloc[0].dropna()
     topn = this_signal.nlargest(top_n)
@@ -149,6 +150,12 @@ def cross_sectional_momentum_topn(
     eq = 1.0
     equity = [eq]
     charged_init = False
+    weights_map: Dict[pd.Timestamp, pd.Series] = {}
+    turnover_items: Dict[pd.Timestamp, float] = {}
+    selections: Dict[pd.Timestamp, List[str]] = {} 
+
+    weights_map[t0] = w.copy()
+    selections[t0] = topn.index.tolist().copy()
 
     px = px.loc[t0:]
     daily_rets = px.ffill().pct_change().fillna(0.0)
@@ -161,10 +168,17 @@ def cross_sectional_momentum_topn(
             this_signal = signal[signal.index == (date.to_period("M"))].iloc[0].dropna()
             topn = this_signal.nlargest(top_n)
             w_new = pd.Series(1.0 / len(topn), index=topn.index)
-            turnover = float((w_new - w).abs().sum())
+            union = w.index.union(w_new.index)
+            w_old_aligned = w.reindex(union).fillna(0.0).astype("float64")
+            w_new_aligned = w_new.reindex(union).fillna(0.0).astype("float64")
+            turnover = float((w_new_aligned - w_old_aligned).abs().sum())
             cost_frac = (cost_bps / 1e4) * turnover
             eq *= (1.0 - cost_frac)
             w = w_new
+
+            weights_map[date] = w_new.copy()
+            selections[date] = topn.index.tolist().copy()
+            turnover_items[date] = turnover
         # elif date == rebal_dates[-1]:
         #     # end of portfolio, we sell everything
             # eq *= (1.0 - cost_bps / 1e4)
@@ -179,6 +193,39 @@ def cross_sectional_momentum_topn(
         name = f"MOM_{lookback_months}-{skip_months}_N{top_n}"
     eq = pd.Series(equity, index=px.index, name=name)
 
-    return eq
+    weights_df = (
+        pd.DataFrame.from_dict(weights_map, orient="index")
+        .sort_index()
+        .fillna(0.0)
+        .astype("float64")
+    )
+    weights_df.index.name = "rebal_date"
+    weights_df.columns.name = "ticker"
+
+    turnover_ser = (
+        pd.Series(turnover_items, name="turnover")
+        .sort_index()
+        .astype("float64")
+    )
+
+    params = {"top_n": top_n,
+              "cost_bps": cost_bps,
+              "lookback": lookback_months,
+              "skip": skip_months,
+              "min_hist_ratio": min_hist_ratio}
+    
+    res = StrategyResult(
+        name=name,
+        equity=eq,
+        rebal_dates=rebal_dates,
+        turnover=turnover_ser,
+        entry_cost_frac=cost_bps / 1e4,
+        selections=selections,
+        weights=weights_df,
+        params=params
+    )
+
+
+    return res
 
     
