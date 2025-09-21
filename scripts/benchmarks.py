@@ -39,7 +39,7 @@ def main():
     args = parse_args()
     setup_logging(verbose=args.verbose)
     
-    config = read_yaml("config/run.yaml")
+    config = read_yaml("config/run2.yaml")
     benchmarks = config.get("benchmarks", [])
     stocks = config.get("stocks", [])
     start_date = config.get("min_date", None)
@@ -62,24 +62,24 @@ def main():
         bench_equities.append(eq)
         out = out_dir / f"{bench}_buy_and_hold.csv"
         eq.to_csv(out, header=True)
-        logging.info(f"Wrote benchmark equity to {out}")
+        logging.info(f"Wrote [{bench}] benchmark equity to {out}")
 
     cost_bps=5.0
     stock_eq = buy_and_hold(px[stocks], cost_bps=cost_bps)
     out = out_dir / "all_stocks_equal_weight_buy_and_hold.csv"
     stock_eq.to_csv(out, header=True)
-    logging.info(f"Wrote all-stocks equal weight buy-and-hold equity to {out}")
+    logging.info(f"Wrote all-stocks ({len(stocks)}) equal weight buy-and-hold equity to {out}")
 
     m_rebal_eq = monthly_rebalance(px[stocks], cost_bps=cost_bps)
     out = out_dir / "all_stocks_monthly_rebalance.csv"
     m_rebal_eq.to_csv(out, header=True)
-    logging.info(f"Wrote all-stocks monthly-rebalance equity to {out}")
+    logging.info(f"Wrote all-stocks ({len(stocks)}) monthly-rebalance equity to {out}")
 
 
     # plotting
     curves = {bench: s for bench, s in zip(benchmarks, bench_equities)}
-    curves["Stocks (Equal-Weight B&H)"] = stock_eq
-    curves["Stocks (Equal-Weight Monthly-Rebalance)"] = m_rebal_eq
+    curves[f"Stocks ({len(stocks)}) (Equal-Weight B&H)"] = stock_eq
+    curves[f"Stocks ({len(stocks)}) (Equal-Weight Monthly-Rebalance)"] = m_rebal_eq
 
     df_plot = pd.concat(curves, axis=1)  # columns = strategy names
     df_plot = df_plot.dropna(how="all")  # safety
