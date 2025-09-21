@@ -26,9 +26,9 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
     w /= w.sum()
     w_target = w.copy()
 
-    # first day allocation cost
-    eq = 1.0 - (cost_bps / 1e4) * w.abs().sum()
+    eq = 1.0
     equity = [eq]
+    charged_init = False
 
     px = px.loc[t0:]
     daily_rets = px.ffill().pct_change().fillna(0.0)
@@ -42,6 +42,10 @@ def monthly_rebalance(px: pd.DataFrame, weights: Optional[dict] = None, cost_bps
             cost_frac = (cost_bps / 1e4) * turnover
             eq *= (1.0 - cost_frac)
             w = w_target
+        if not charged_init:
+            # the very first transaction cost is included in first day return
+            eq *= (1.0 - cost_bps / 1e4)
+            charged_init = True
         
         equity.append(eq)
     

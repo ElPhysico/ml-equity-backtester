@@ -20,5 +20,8 @@ def buy_and_hold(px: pd.DataFrame, cost_bps: float = 0.0) -> pd.Series:
     norm = norm.reindex(columns=tickers).ffill()
 
     eq = (1.0 - cost_bps / 1e4) * (norm * w0).sum(axis=1)
+    # the below effectively changes the return of the first day by the buy cost
+    eq[t0] = 1.0
     eq.name = "equity"
+
     return eq
