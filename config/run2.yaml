@@ -13,6 +13,7 @@ stocks:
   - ADYEN.AS
   - AFRM
   - AI
+  - AKAM
   - AMD
   - APP
   - AR
@@ -33,9 +34,11 @@ stocks:
   - DOCS
   - DOCU
   - EL
+  - ELF
   - ESTC
   - EW
   - FVRR
+  - GOTU
   - HIMS
   - INCY
   - ISRG
@@ -44,6 +47,7 @@ stocks:
   - LYFT
   - MCO
   - MELI
+  - MGM
   - NET
   - NFLX
   - NIO
@@ -56,6 +60,7 @@ stocks:
   - PLTR
   - PTON
   - PUBM
+  - QGEN
   - RBLX
   - RIVN
   - ROKU
@@ -63,6 +68,8 @@ stocks:
   - SNOW
   - SPOT
   - TEAM
+  - TMO
+  - TTD
   - TWLO
   - TWST
   - UBER
