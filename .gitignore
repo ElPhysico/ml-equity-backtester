@@ -1,12 +1,15 @@
 # excluded project folders
 /data/
 /results/
+/results_deprecated/
+/outputs/
 /scripts/old/
 /transition_prompts
 
 
 # excluded files
 /notebooks/testing.ipynb
+/notebooks/dev.ipynb
 
 # random file?
 .DS_Store
