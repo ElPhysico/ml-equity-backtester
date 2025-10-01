@@ -42,7 +42,7 @@ def build_month_end_grid(
     px_long["month"] = px_long.index.get_level_values("date").to_period("M")
 
     # now use month to find last trading day
-    g = px_long.groupby(["ticker", "month"], observed=False)
+    g = px_long.groupby(["ticker", "month"], observed=True)
     last_rows = g.tail(1).reset_index()
     last_rows = last_rows.rename(columns={
         "date": "trade_dt_M",
