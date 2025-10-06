@@ -4,29 +4,8 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, Optional
 
 from mlbt.features import vol_1m, mom_P_skip_log_1m
-from mlbt.utils import sha1_of_str, utc_now_iso
+from mlbt.utils import sha1_of_str, utc_now_iso, universe_id_from_grid, coverage_from_grid, config_hash
 
-def _universe_id_from_grid(month_grid: pd.DataFrame) -> str:
-    # Expect index = (month, ticker)
-    tickers = sorted(set(month_grid.index.get_level_values("ticker")))
-    uh = sha1_of_str(",".join(tickers))
-    return f"u{len(tickers)}_{uh[:6]}"
-
-def _coverage_from_grid(month_grid: pd.DataFrame) -> Tuple[str, str]:
-    months = month_grid.index.get_level_values("month")
-    start = str(months.min())  # "YYYY-MM"
-    end   = str(months.max())  # "YYYY-MM"
-    return start, end
-
-def _config_hash(universe_hash: str, params: Dict[str, Any], feature_names: list[str]) -> str:
-    # Stable, readable-ish
-    key = {
-        "universe_hash": universe_hash,
-        "params": params,
-        "features": feature_names,
-    }
-    import json
-    return sha1_of_str(json.dumps(key, sort_keys=True))
 
 def build_feature_panel_v0(
     px_wide: pd.DataFrame,
@@ -88,8 +67,8 @@ def build_feature_panel_v0(
     vol_col = "ann_vol_1m" if annualize else "vol_1m"
 
     # Build metadata
-    start_month, end_month = _coverage_from_grid(month_grid)
-    universe_id = _universe_id_from_grid(month_grid)
+    start_month, end_month = coverage_from_grid(month_grid)
+    universe_id = universe_id_from_grid(month_grid)
     tickers = sorted(set(month_grid.index.get_level_values("ticker")))
     universe_hash = sha1_of_str(",".join(tickers))
     params = {
@@ -111,10 +90,10 @@ def build_feature_panel_v0(
             "id": universe_id,
         },
         "features": feature_list,
-        "params": params,
+        "params": params
     }
-    config_hash = _config_hash(universe_hash, params, feature_list)
-    meta["config_hash"] = config_hash
+    cfg_hash = config_hash(universe_hash, params, feature_list)
+    meta["config_hash"] = cfg_hash
 
     # Optional write (using mlbt.io)
     if write:
@@ -125,7 +104,7 @@ def build_feature_panel_v0(
             universe_id=universe_id,
             start_month=start_month,
             end_month=end_month,
-            config_hash=config_hash,
+            config_hash=cfg_hash,
             base_out_dir=out_dir
         )
 

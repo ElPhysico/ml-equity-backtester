@@ -14,7 +14,6 @@ Functions follow a common pattern:
   * Monthly features end with `_1m` (e.g., `vol_1m`).
   * Annualized variants are prefixed with `ann_` (e.g., `ann_vol_1m`).
 """
-
 import pandas as pd
 import numpy as np
 
