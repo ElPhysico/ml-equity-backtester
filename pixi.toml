@@ -24,4 +24,7 @@ download_init = "python scripts/download_data.py --mode init"
 download_update = "python scripts/download_data.py --mode update"
 download = "python scripts/download_data.py --mode init --tickers 373220.KS"
 
+download_init_test_universe = "python scripts/download_data.py --mode init --tickers ADBE AKAM AMD AR BB BIIB BRK.B CIEN EL INCY MCO MGM NFLX QGEN TMO"
+download_update_test_universe = "python scripts/download_data.py --mode update --tickers ADBE AKAM AMD AR BB BIIB BRK.B CIEN EL INCY MCO MGM NFLX QGEN TMO"
+
 benchmarks = "python scripts/benchmarks.py"
