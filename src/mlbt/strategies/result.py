@@ -210,3 +210,7 @@ class StrategyResult:
             assert (self.turnover >= 0).all(), "turnover must be non-negative"
         if self.rebal_dates is not None:
             assert isinstance(self.rebal_dates, pd.DatetimeIndex), "rebal_dates must be a DatetimeIndex"
+
+    def compute_metrics(self, **kwargs):
+        from mlbt.metrics import compute_metrics
+        return compute_metrics(self, **kwargs)

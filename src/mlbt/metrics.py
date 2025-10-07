@@ -4,6 +4,8 @@ import numpy as np
 from dataclasses import dataclass, asdict
 from typing import Literal, Optional
 
+from mlbt.strategies import StrategyResult
+
 Freq = Literal["D", "W", "M"]
 
 # Annualization factors: daily=252, weekly=52, monthly=12
@@ -162,6 +164,8 @@ def max_drawdown(
     else:
         raise ValueError("Either equity or returns are required to compute max drawdown.")
 
+
+
 # ---------------- Orchestrator ----------------
 
 def compute_metrics(
@@ -170,6 +174,15 @@ def compute_metrics(
     freq: Freq = "D",
     rf_ann: float = 0
 ) -> None:
+    """
+    Compute performance metrics for an equity curve, returns or StrategyResult.
+
+    If a StrategyResult object is provided instead of a Series, its
+    `.equity` attribute is used automatically.
+    """
+    if isinstance(equity, StrategyResult):
+        equity = equity.equity
+        
     eq, ret = None, None
     if returns is not None:
         ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
