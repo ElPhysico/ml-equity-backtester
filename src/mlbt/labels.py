@@ -24,7 +24,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from mlbt.utils import sha1_of_str, utc_now_iso, universe_id_from_grid, coverage_from_grid, config_hash
+from mlbt.utils import build_panel_meta
 
 
 def build_label_panel_v0(
@@ -34,7 +34,31 @@ def build_label_panel_v0(
         out_dir: Optional[Path] = None
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
-    Docstring to be written.
+    Build Label Panel v0 (monthly): next-month price and 1M forward return.
+
+    This function augments the canonical (month, ticker) grid with:
+      - `px_Mplus1`: the next month’s end-of-month price
+      - `y_ret_1m` : the 1-month forward return from month-end to next month-end
+
+    Parameters
+    ----------
+    month_grid : pd.DataFrame
+        MultiIndex (month, ticker) grid used as the base alignment for labels.
+        Must include the columns required by `ret_1m(...)` to compute forward
+        price/return.
+    write : bool, default=False
+        If True, persist the labels and metadata via `mlbt.io.save_labels(...)`.
+    out_dir : pathlib.Path, optional
+        Optional base output directory override (useful for tests).
+
+    Returns
+    -------
+    (labels, meta) : Tuple[pd.DataFrame, dict]
+        `labels` includes the original grid columns plus:
+          - "px_Mplus1"
+          - "y_ret_1m"
+        `meta` is a standardized dict with coverage, universe summary,
+        parameterization, and a config hash.
     """
     labels = month_grid.copy()
     
@@ -44,39 +68,29 @@ def build_label_panel_v0(
     y_ret_1m_col = "y_ret_1m"
 
     # metadata
-    start_month, end_month = coverage_from_grid(month_grid)
-    universe_id = universe_id_from_grid(month_grid)
-    tickers = sorted(set(month_grid.index.get_level_values("ticker")))
-    universe_hash = sha1_of_str(",".join(tickers))
+
     params = {
 
     }
     labels_list = [px_Mplus1_col, y_ret_1m_col]
 
-    meta = {
-        "created_at": utc_now_iso(),
-        "data_coverage": {"start": start_month, "end": end_month},
-        "universe": {
-            "tickers": tickers,
-            "count": len(tickers),
-            "hash": universe_hash,
-            "id": universe_id
-        },
-        "labels": labels_list,
-        "params": params
-    }
-    cfg_hash = config_hash(universe_hash, params, labels_list)
-    meta["config_hash"] = cfg_hash
+    meta = build_panel_meta(
+        month_grid=month_grid,
+        feature_names=labels_list,
+        params=params,
+        panel_name="label_panel",
+        panel_version="v0",
+    )
 
     if write:
         from mlbt.io import save_labels
         save_labels(
             labels=labels,
             meta=meta,
-            universe_id=universe_id,
-            start_month=start_month,
-            end_month=end_month,
-            config_hash=cfg_hash,
+            universe_id=meta["universe"]["id"],
+            start_month=meta["data_coverage"]["start"],
+            end_month=meta["data_coverage"]["end"],
+            config_hash=meta["config_hash"],
             base_out_dir=out_dir
         )
 

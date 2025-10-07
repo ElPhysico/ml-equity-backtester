@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, Optional
 
 from mlbt.features import vol_1m, mom_P_skip_log_1m
-from mlbt.utils import sha1_of_str, utc_now_iso, universe_id_from_grid, coverage_from_grid, config_hash
+from mlbt.utils import build_panel_meta
 
 
 def build_feature_panel_v0(
@@ -67,10 +67,6 @@ def build_feature_panel_v0(
     vol_col = "ann_vol_1m" if annualize else "vol_1m"
 
     # Build metadata
-    start_month, end_month = coverage_from_grid(month_grid)
-    universe_id = universe_id_from_grid(month_grid)
-    tickers = sorted(set(month_grid.index.get_level_values("ticker")))
-    universe_hash = sha1_of_str(",".join(tickers))
     params = {
         "P": P,
         "skip": skip,
@@ -80,32 +76,24 @@ def build_feature_panel_v0(
     }
     feature_list = [mom_col, vol_col]
 
-    meta = {
-        "created_at": utc_now_iso(),
-        "data_coverage": {"start": start_month, "end": end_month},
-        "universe": {
-            "tickers": tickers,
-            "count": len(tickers),
-            "hash": universe_hash,
-            "id": universe_id,
-        },
-        "features": feature_list,
-        "params": params
-    }
-    cfg_hash = config_hash(universe_hash, params, feature_list)
-    meta["config_hash"] = cfg_hash
+    meta = build_panel_meta(
+        month_grid=month_grid,
+        feature_names=feature_list,
+        params=params,
+        panel_name="feature_panel",
+        panel_version="v0",
+    )
 
-    # Optional write (using mlbt.io)
     if write:
         from mlbt.io import save_panel
         save_panel(
             features=features,
             meta=meta,
-            universe_id=universe_id,
-            start_month=start_month,
-            end_month=end_month,
-            config_hash=cfg_hash,
-            base_out_dir=out_dir
+            universe_id=meta["universe"]["id"],
+            start_month=meta["data_coverage"]["start"],
+            end_month=meta["data_coverage"]["end"],
+            config_hash=meta["config_hash"],
+            base_out_dir=out_dir,
         )
 
     return features, meta
