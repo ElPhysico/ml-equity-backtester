@@ -46,8 +46,9 @@ def mom_P_skip_log_1m(
     desc = f"mom_{P}_{skip}_log_1m"
 
     # get two price series per ticker
-    px_skip = features.groupby("ticker", observed=True)["px_M"].shift(skip)
-    px_P = features.groupby("ticker", observed=True)["px_M"].shift(P)
+    gb = features.groupby("ticker", observed=True)
+    px_skip = gb["px_M"].shift(skip)
+    px_P = gb["px_M"].shift(P)
 
     # calculate log returns
     log_return = np.log(px_skip) - np.log(px_P)
