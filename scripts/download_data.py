@@ -63,7 +63,7 @@ def get_existing_max_date_for_ticker(out_dir: Path, ticker: str) -> Optional[pd.
 def fetch_ticker_data(ticker: str,
                       ts: TimeSeries,
                       output_size: str,
-                      max_retries: int = 2,
+                      max_retries: int = 1, # to save api call quota
                       base_sleep: float = 2.0
 ) -> Optional[pd.DataFrame]:
     """Fetch daily OHLCV data for a given ticker from Alpha Vantage API with retries and jitter and returns DataFrame or None."""
