@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 from mlbt.strategies import StrategyResult
 from mlbt.backtest_topn import backtest_topn
 from mlbt.utils import build_run_meta
+from mlbt.utils import validate_month_grid_index
 from mlbt.io import save_backtest_runs
 
 
@@ -13,16 +14,13 @@ def run_topn_from_predictions(
     px_wide: pd.DataFrame,
     predictions: pd.DataFrame,
     *,
-    rank_col: str,
-    N: int = 10,
-    cost_bps: float = 5.0,
+    backtest_params: Optional[Dict] = None,
     run_name: Optional[str] = None,
-    strict: bool = True,
     save: bool = True,
     out_dir: Optional[Path] = None
 ) -> Tuple["StrategyResult", Dict]:
     """
-    Orchestrate a Top-N backtest from a precomputed predictions table.
+    Orchestrate a Top-N backtest from a precomputed predictions/signal table.
 
     Validates calendars and Top-N feasibility, executes the Top-N strategy
     via `mlbt.backtest_topn.backtest_topn`, computes core metrics, and
@@ -36,21 +34,11 @@ def run_topn_from_predictions(
     predictions : pandas.DataFrame
         MultiIndex (month, ticker) table with at least `rank_col` present.
 
-    rank_col : str
-        Column inside `predictions` used to rank tickers each month (higher is better).
-
-    N : int, default=10
-        Number of tickers to select each rebalance.
-
-    cost_bps : float, default=5.0
-        One-way transaction cost (basis points) applied on turnover at rebalances.
+    backtest_params : dict, optional
+        Parameters for the backtesting engine, e.g. {"rank_col": y_pred", "N": 10, "cost_bps": 4.0, "strict": True}.
 
     run_name : str, optional
         Friendly label that will be included in saved metadata and filenames.
-
-    strict : bool, default=True
-        If True, raise on missing prediction months or under-filled Top-N months.
-        If False, a future variant may apply a fallback policy (carry/to_cash/skip).
 
     save : bool, default=True
         If True, persist artifacts (preds/equity/weights/turnover/metrics/meta).
@@ -64,61 +52,40 @@ def run_topn_from_predictions(
         `res`: StrategyResult from the backtester.
         `meta`: run metadata including run_id, paths, parameters, and small
         diagnostics (e.g., calendar coverage, universe size).
-
-    Notes
-    -----
-    - This runner does not build features or train models; it assumes your
-      `predictions` are already prepared and aligned to (month, ticker).
-    - All heavy lifting of execution happens in `backtest_topn`.
     """
-    # checking for ranking col
-    if rank_col not in predictions.columns:
-        raise ValueError(f"`rank_col='{rank_col}'` not found in predictions columns: {list(predictions.columns)}")
-    
-    # sanity on index level
-    if not isinstance(predictions.index, pd.MultiIndex):
-        raise ValueError("`predictions` must be indexed by MultiIndex (month, ticker).")
-    if "month" not in predictions.index.names or "ticker" not in predictions.index.names:
-        raise ValueError("`predictions` index must have levels ['month','ticker'].")
+    # some guards
+    validate_month_grid_index(predictions)
     
     # run actual topn backtest
-    res = backtest_topn(
+    backtest_params = {} if backtest_params is None else backtest_params
+    res, backtest_params = backtest_topn(
         px_wide=px_wide,
         predictions=predictions,
-        rank_col=rank_col,
-        N=N,
-        cost_bps=cost_bps,
+        **backtest_params,
         name=run_name
     )
 
     # compute metrics
     try:
-        m = res.compute_metrics()
+        m = res.compute_metrics().to_dict()
     except Exception:
         m = None
 
     # meta data
-    params = {
-        "rank_col": rank_col,
-        "N": N,
-        "cost_bps": cost_bps,
-        "strict": strict
-    }
-
     run_meta = build_run_meta(
         predictions=predictions,
         res=res,
         run_name=run_name,
+        backtest_params=backtest_params,
         runner_name="topn_from_predictions",
-        runner_version="v0",
-        params=params,
+        runner_version=None,
         metrics=m if isinstance(m, dict) else None,
     )
 
     if save:
         run_dir, saved_meta = save_backtest_runs(
             run_meta=run_meta,
-            params=run_meta["params"],
+            hashing_params=run_meta["backtest_params"],
             res=res,
             preds=predictions,
             metrics=m if isinstance(m, dict) else None,
