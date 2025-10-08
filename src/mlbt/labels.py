@@ -28,10 +28,11 @@ from mlbt.utils import build_panel_meta
 
 
 def build_label_panel_v0(
-        month_grid: pd.DataFrame,
-        *,
-        write: bool = False,
-        out_dir: Optional[Path] = None
+    month_grid: pd.DataFrame,
+    *,
+    compact_meta: bool = False,
+    write: bool = False,
+    out_dir: Optional[Path] = None
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Build Label Panel v0 (monthly): next-month price and 1M forward return.
@@ -46,6 +47,8 @@ def build_label_panel_v0(
         MultiIndex (month, ticker) grid used as the base alignment for labels.
         Must include the columns required by `ret_1m(...)` to compute forward
         price/return.
+    compact_meta : bool, default False
+        Switches of certain information that is repeated when similar meta is created from several functions within a pipeline.
     write : bool, default=False
         If True, persist the labels and metadata via `mlbt.io.save_labels(...)`.
     out_dir : pathlib.Path, optional
@@ -80,17 +83,23 @@ def build_label_panel_v0(
         params=params,
         panel_name="label_panel",
         panel_version="v0",
+        compact_meta=compact_meta
     )
 
     if write:
         from mlbt.io import save_labels
+        # to save we need non_compact meta
+        _meta = build_panel_meta(
+            month_grid=month_grid,
+            feature_names=labels_list,
+            params=params,
+            panel_name="label_panel",
+            panel_version="v0",
+            compact_meta=False
+        )
         save_labels(
             labels=labels,
-            meta=meta,
-            universe_id=meta["universe"]["id"],
-            start_month=meta["data_coverage"]["start"],
-            end_month=meta["data_coverage"]["end"],
-            config_hash=meta["config_hash"],
+            meta=_meta,
             base_out_dir=out_dir
         )
 

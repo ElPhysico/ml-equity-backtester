@@ -25,21 +25,24 @@ All input data should be pre-curated to exclude dividend effects or splits, or
 should use adjusted prices to ensure return consistency.
 """
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import logging
 
 from mlbt.strategies import StrategyResult
 from mlbt.load_prices import flag_suspect_splits
+from mlbt.utils import validate_columns_exist
 
 
 def backtest_topn(
     px_wide: pd.DataFrame,
     predictions: pd.DataFrame,
-    rank_col: str,
+    *,
+    rank_col: str = "y_pred",
     N: int = 10,
     cost_bps: float = 5.0,
+    strict: bool = True,
     name: Optional[str] = None
-) -> StrategyResult:
+) -> Tuple["StrategyResult", Dict]:
     """
     Backtest a monthly Top-N equity selection strategy.
 
@@ -71,15 +74,18 @@ def backtest_topn(
         One-way transaction cost in basis points applied on turnover at each
         rebalance.  A cost of 5.0 corresponds to 0.05 %.
 
+    strict: bool, optional True
+        Currently not used, may be used to enforce behavior in case of missing tickers in the future (hold, cash, ...).
+
     name : str, optional
         Optional identifier for the resulting strategy.  Defaults to
         `"{rank_col}_top{N}"`.
 
     Returns
     -------
-    StrategyResult
-        Object containing the full daily equity curve, rebalance dates,
-        portfolio weights, selections, turnover series, and parameter metadata.
+    (res, backtest_params) : Tuple[StrategyResult, dict]
+        `res`: StrategyResult of the Top-N backtest.
+        `backtest_params`: Dictionary containing the backtest params used.
 
     Notes
     -----
@@ -91,6 +97,9 @@ def backtest_topn(
     - Logs a warning if any ticker-month pair exhibits more than 30 % missing
       daily returns.
     """
+    # some guards
+    validate_columns_exist(predictions, rank_col)
+
     # check for potential stocksplits
     flag_suspect_splits(px_wide)
 
@@ -224,5 +233,12 @@ def backtest_topn(
         weights=weights_df,
         params=params
     )
+
+    backtest_params = {
+        "rank_col": rank_col,
+        "N": N,
+        "cost_bps": cost_bps,
+        "strict": strict
+    }
     
-    return res
+    return res, backtest_params

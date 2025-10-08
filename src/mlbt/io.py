@@ -58,16 +58,17 @@ def resolve_features_output_dir(
 def save_panel(
     features: pd.DataFrame,
     meta: Dict[str, Any],
-    universe_id: str,
-    start_month: str,
-    end_month: str,
-    config_hash: str,
     base_out_dir: Optional[Path] = None
 ) -> Path:
     """
     Write features.parquet and meta.json to the resolved directory.
     Returns the directory path used.
     """
+    universe_id = meta["universe"]["id"]
+    start_month = meta["data_coverage"]["start"]
+    end_month = meta["data_coverage"]["end"]
+    config_hash = meta["config_hash"]
+
     out_dir = resolve_features_output_dir(universe_id, start_month, end_month, config_hash, base_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     # Parquet
@@ -115,16 +116,17 @@ def resolve_labels_output_dir(
 def save_labels(
     labels: pd.DataFrame,
     meta: Dict[str, Any],
-    universe_id: str,
-    start_month: str,
-    end_month: str,
-    config_hash: str,
     base_out_dir: Optional[Path] = None
 ) -> Path:
     """
     Write labels.parquet and meta.json to the resolved directory.
     Returns the directory path used.
     """
+    universe_id = meta["universe"]["id"]
+    start_month = meta["data_coverage"]["start"]
+    end_month = meta["data_coverage"]["end"]
+    config_hash = meta["config_hash"]
+    
     out_dir = resolve_labels_output_dir(universe_id, start_month, end_month, config_hash, base_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     # Parquet
@@ -173,7 +175,7 @@ def resolve_backtests_output_dir(
 def save_backtest_runs(
     *,
     run_meta: Dict[str, Any],
-    params: Dict[str, Any],
+    hashing_params: Dict[str, Any],
     res: Any,  # StrategyResult-like (.name, .equity, .weights, .turnover, .selections, .rebal_dates)
     preds: Optional[pd.DataFrame] = None,
     metrics: Optional[Dict[str, Any]] = None,
@@ -197,7 +199,7 @@ def save_backtest_runs(
     run_meta : dict
         Standardized metadata from `build_run_meta`; this function augments it
         with file paths, run_dir, and run_id before saving to disk.
-    params : dict
+    hashing_params : dict
         Parameters used to construct the folder hash (kept small & stable).
     res : StrategyResult-like
         Result object from the backtester.
@@ -214,7 +216,7 @@ def save_backtest_runs(
         Path to created run folder and the metadata dict as saved to disk.
     """
     run_dir = resolve_backtests_output_dir(
-        params=params,
+        params=hashing_params,
         base_out_dir=base_out_dir
     )
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -241,6 +243,7 @@ def save_backtest_runs(
         preds.to_parquet(p_preds, index=True)
     if metrics is not None:
         p_metrics.write_text(json.dumps(metrics, indent=2))
+    p_meta.write_text(json.dumps(run_meta, indent=2))
 
     # update metadata
     root = find_project_root()
@@ -260,6 +263,7 @@ def save_backtest_runs(
         }
     })
     updated_meta["run_id"] = run_dir.name
+    p_meta.unlink()
     p_meta.write_text(json.dumps(updated_meta, indent=2))
 
     return run_dir, updated_meta

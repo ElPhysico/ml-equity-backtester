@@ -16,11 +16,16 @@ def build_feature_panel_v0(
     min_obs: int = 10,
     annualize: bool = False,
     ddof: int = 0,
+    compact_meta: bool = False,
     write: bool = False,
     out_dir: Optional[Path] = None
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Build Feature Panel v0 (monthly): momentum (P-skip) + within-month volatility.
+
+    This function augments the canonical (month, ticker) grid with:
+     - `mom_{P}_{skip}_log_1m`: the momentum over P lookback months, skipping the most recent skip months.
+     - `vol_1m` or `ann_vol_1m`: the most recent month's volatility
 
     Parameters
     ----------
@@ -28,22 +33,31 @@ def build_feature_panel_v0(
         Wide daily prices (DatetimeIndex, columns=tickers, values=close).
     month_grid : pd.DataFrame
         (month, ticker) grid with at least 'px_M' column.
-    P, skip : int
-        Momentum window (e.g., 12-1).
-    min_obs : int
+    P : int, default 12
+        Total lookback length in months.
+    skip : int, default 1
+        Number of most recent months to exclude from the window (e.g. skip=1
+        means end the lookback at M-1).
+    min_obs : int, default 10
         Minimum daily-return observations required for vol_1m.
-    annualize : bool
+    annualize : bool, default False
         Annualize vol_1m via sqrt(252) and name 'ann_vol_1m'.
-    ddof : int
+    ddof : int, default 0
         Degrees of freedom for stdev (0=population, 1=sample).
-    write : bool
+    compact_meta : bool, default False
+        Switches of certain information that is repeated when similar meta is created from several functions within a pipeline.
+    write : bool, default False
         If True, write features.parquet + meta.json to disk.
     out_dir : pathlib.Path | None
         Optional base output directory override (useful for tests).
 
     Returns
     -------
-    (features_df, meta_dict)
+    (features, meta) : Tuple[pd.DataFrame, dict]
+        `features` includes the original grid columns plus:
+         - `mom_{P}_{skip}_log_1m`
+         - `vol_1m` or `ann_vol_1m`
+        `meta` is a standardized dict with coverage, universe summary, paramerization, and a config hash.
     """
     # Start from the canonical grid
     features = month_grid.copy()
@@ -82,17 +96,23 @@ def build_feature_panel_v0(
         params=params,
         panel_name="feature_panel",
         panel_version="v0",
+        compact_meta=compact_meta
     )
 
     if write:
         from mlbt.io import save_panel
+        # to save we need non_compact meta
+        _meta = build_panel_meta(
+            month_grid=month_grid,
+            feature_names=feature_list,
+            params=params,
+            panel_name="feature_panel",
+            panel_version="v0",
+            compact_meta=False
+        )
         save_panel(
             features=features,
-            meta=meta,
-            universe_id=meta["universe"]["id"],
-            start_month=meta["data_coverage"]["start"],
-            end_month=meta["data_coverage"]["end"],
-            config_hash=meta["config_hash"],
+            meta=_meta,
             base_out_dir=out_dir,
         )
 
