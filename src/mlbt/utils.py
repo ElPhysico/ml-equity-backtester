@@ -12,11 +12,15 @@ PROJECT_SENTINELS = ("pyproject.toml", ".git")
 def sha1_of_str(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
+def short_sha1_of_json(obj: dict, length: int = 8) -> str:
+    """Deterministic short hash for run IDs (stable across Python processes)."""
+    return sha1_of_str(json.dumps(obj, sort_keys=True, separators=(",", ":")))[:length]
+
 def utc_now_iso() -> str:
     # ISO 8601 with 'Z' suffix
     return datetime.now(UTC).replace(microsecond=0).isoformat() + "Z"
 
-def _to_iso_date(dt: pd.Timestamp) -> str:
+def to_iso_date(dt: pd.Timestamp) -> str:
     """YYYY-MM-DD (no time)."""
     if isinstance(dt, pd.Timestamp):
         return dt.date().isoformat()
@@ -65,10 +69,6 @@ def config_hash(universe_hash: str, params: Dict[str, Any], feature_names: list[
     }
     return sha1_of_str(json.dumps(key, sort_keys=True))
 
-def _short_sha1_of_json(obj: dict, length: int = 8) -> str:
-    """Deterministic short hash for run IDs (stable across Python processes)."""
-    return sha1_of_str(json.dumps(obj, sort_keys=True, separators=(",", ":")))[:length]
-
 def tickers_from_grid(month_grid: pd.DataFrame) -> List[str]:
     """
     Return sorted unique tickers from a (month, ticker) MultiIndex grid.
@@ -95,21 +95,6 @@ def universe_summary_from_grid(month_grid: pd.DataFrame) -> Dict[str, Any]:
         "hash": sha1_of_str(",".join(tickers)),
         "id": universe_id_from_grid(month_grid),
     }
-
-def _short_sha1_of_json(obj: dict, length: int = 8) -> str:
-    """Deterministic short hash for run IDs (stable across Python processes)."""
-    return sha1_of_str(json.dumps(obj, sort_keys=True, separators=(",", ":")))[:length]
-
-
-def _to_iso_date(dt: pd.Timestamp) -> str:
-    """YYYY-MM-DD (no time)."""
-    if isinstance(dt, pd.Timestamp):
-        return dt.date().isoformat()
-    # fallback for plain date/datetime
-    try:
-        return pd.Timestamp(dt).date().isoformat()
-    except Exception:
-        return str(dt)
 
 
 # ------------------------------------------------
@@ -166,125 +151,77 @@ def build_panel_meta(
     return meta
 
 
-
-def save_artifacts(
+def build_run_meta(
+    predictions: pd.DataFrame,
+    res: Any,
     *,
     run_name: Optional[str],
+    runner_name: str,
+    runner_version: str = "v0",
     params: Dict[str, Any],
-    res: Any,  # duck-typed StrategyResult (expects .name, .equity, .weights, .turnover, .selections, .rebal_dates)
-    preds: Optional[pd.DataFrame] = None,
     metrics: Optional[Dict[str, Any]] = None,
-    out_dir: Path | str = "outputs/backtests",
-    code_paths: Optional[List[Path]] = None,
-) -> Tuple[Path, Dict[str, Any]]:
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """
-    Persist core backtest artifacts and return run directory + metadata.
+    Construct a standardized metadata dictionary for any backtest or experiment run.
 
     Parameters
     ----------
-    run_name : str, optional
-        Friendly label for this run (stored in metadata).
-    params : dict
-        Parameters relevant to the run (e.g., N, cost_bps, rank_col, strict, feature/model cfg).
+    predictions : pandas.DataFrame
+        MultiIndex (month, ticker) table used to infer coverage and universe summary.
     res : Any
-        Strategy-like result with attributes:
-          - name : str
-          - equity : pd.Series (index=date)
-          - weights : pd.DataFrame (index=rebal_date, columns=tickers)
-          - turnover : pd.Series (index=rebal_date)
-          - selections : Dict[pd.Timestamp, List[str]]
-          - rebal_dates : pd.DatetimeIndex
-    preds : pd.DataFrame, optional
-        Predictions table to persist (e.g., (month, ticker) → y_pred[, y_true]).
+        StrategyResult-like object with `.rebal_dates` and `.name`; adds brief strategy info.
+    run_name : str, optional
+        Friendly label chosen by the user (appears in logs and filenames).
+    runner_name : str
+        Name of the orchestration function (e.g., "topn_from_predictions").
+    runner_version : str, default "v0"
+        Implementation version tag.
+    params : dict
+        Parameters governing the run (e.g., rank_col, N, cost_bps, strict, model_cfg, etc.).
     metrics : dict, optional
-        Metrics to persist (e.g., from mlbt.metrics.compute_metrics).
-    out_dir : Path | str, default "outputs/backtests"
-        Root folder under the project where run subfolder is created.
-    code_paths : List[Path], optional
-        List of source files to hash and record in metadata.
+        Optional metrics summary (Sharpe, CAGR, etc.) for inclusion in the metadata.
+    extra : dict, optional
+        Free-form additional fields merged at top level.
 
     Returns
     -------
-    run_dir : Path
-        Path to the created run directory.
-    run_meta : dict
-        Metadata also written to run_meta.json (contains paths to saved files).
+    meta : dict
+        Standardized run metadata including created_at, runner info,
+        coverage, universe preview, parameters, optional metrics,
+        and optional strategy summary.
     """
-    # Resolve paths
-    root = find_project_root()
-    out_root = (root / Path(out_dir)).resolve()
+    start_month, end_month = coverage_from_grid(predictions)
+    univ = universe_summary_from_grid(predictions)
 
-    # Create run_id (timestamp + short hash of params)
-    created_at = utc_now_iso()
-    stamp = created_at.replace("-", "").replace(":", "").replace("Z", "").replace("T", "-")
-    short_hash = _short_sha1_of_json(params, length=8)
-    run_id = f"{stamp}_{short_hash}"
-    run_dir = out_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    # File paths
-    p_equity = run_dir / "equity.csv"
-    p_weights = run_dir / "weights.csv"
-    p_turnover = run_dir / "turnover.csv"
-    p_selections = run_dir / "selections.json"
-    p_preds = run_dir / "predictions.parquet" if preds is not None else None
-    p_metrics = run_dir / "metrics.json" if metrics is not None else None
-    p_meta = run_dir / "run_meta.json"
-
-    # Write core artifacts
-    # equity as single-column CSV for easy plotting
-    res.equity.to_frame(name=getattr(res, "name", "strategy")).to_csv(p_equity, index=True)
-    # weights and turnover
-    if getattr(res, "weights", None) is not None:
-        res.weights.to_csv(p_weights, index=True)
-    if getattr(res, "turnover", None) is not None:
-        res.turnover.to_csv(p_turnover, index=True)
-    # selections: map ISO date -> list of tickers
-    if getattr(res, "selections", None) is not None:
-        selections_iso = { _to_iso_date(k): v for k, v in res.selections.items() }
-        p_selections.write_text(json.dumps(selections_iso, indent=2))
-    # preds & metrics
-    if preds is not None:
-        preds.to_parquet(p_preds, index=True)
-    if metrics is not None:
-        p_metrics.write_text(json.dumps(metrics, indent=2))
-
-    # Optional code hashes
-    code_hashes: Dict[str, str] = {}
-    if code_paths:
-        for path in code_paths:
-            try:
-                data = Path(path).read_bytes()
-                code_hashes[str(Path(path))] = hashlib.sha1(data).hexdigest()
-            except Exception:
-                code_hashes[str(Path(path))] = "<unavailable>"
-
-    # Compose metadata
-    run_meta: Dict[str, Any] = {
-        "run_id": run_id,
-        "created_at": created_at,
-        "run_name": run_name,
-        "strategy_name": getattr(res, "name", None),
-        "paths": {
-            "equity_csv": str(p_equity.relative_to(root)),
-            "weights_csv": str(p_weights.relative_to(root)) if p_weights.exists() else None,
-            "turnover_csv": str(p_turnover.relative_to(root)) if p_turnover.exists() else None,
-            "selections_json": str(p_selections.relative_to(root)) if p_selections.exists() else None,
-            "predictions_parquet": str(p_preds.relative_to(root)) if p_preds else None,
-            "metrics_json": str(p_metrics.relative_to(root)) if p_metrics else None,
-            "meta_json": str(p_meta.relative_to(root)),
-            "run_dir": str(run_dir.relative_to(root)),
-        },
-        "params": params,
-        "rebalancing": {
-            "first_rebalance": _to_iso_date(res.rebal_dates[0]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
-            "last_rebalance": _to_iso_date(res.rebal_dates[-1]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
+    strat_info = None
+    try:
+        strat_info = {
+            "strategy_name": getattr(res, "name", None),
             "n_rebalances": int(len(res.rebal_dates)) if getattr(res, "rebal_dates", None) is not None else 0,
-        },
-        "code_hashes": code_hashes or None,
+            "first_rebalance": to_iso_date(res.rebal_dates[0]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
+            "last_rebalance": to_iso_date(res.rebal_dates[-1]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
+        }
+    except Exception:
+        strat_info = None
+
+    meta: Dict[str, Any] = {
+        "created_at": utc_now_iso(),
+        "runner": {"name": runner_name, "version": runner_version},
+        "run_name": run_name,
+        "data_coverage": {"start": start_month, "end": end_month},
+        "universe": univ,
+        "params": params,
     }
+    if strat_info:
+        meta["strategy"] = strat_info
+    if metrics:
+        meta["metrics"] = metrics
+    if extra:
+        meta.update(extra)
 
-    # Persist metadata
-    p_meta.write_text(json.dumps(run_meta, indent=2))
+    return meta
 
-    return run_dir, run_meta
+
+
+
