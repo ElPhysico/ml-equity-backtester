@@ -28,7 +28,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple
 import logging
 
-from mlbt.strategies import StrategyResult
+from mlbt.strategy_result import StrategyResult
 from mlbt.load_prices import flag_suspect_splits
 from mlbt.utils import validate_columns_exist
 

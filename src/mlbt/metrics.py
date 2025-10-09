@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass, asdict
 from typing import Literal, Optional
 
-from mlbt.strategies import StrategyResult
+from mlbt.strategy_result import StrategyResult
 
 Freq = Literal["D", "W", "M"]
 

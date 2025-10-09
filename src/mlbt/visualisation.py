@@ -10,7 +10,7 @@ from typing import Sequence, Optional
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from mlbt.strategies import StrategyResult
+from mlbt.strategy_result import StrategyResult
 
 
 def plot_equities(

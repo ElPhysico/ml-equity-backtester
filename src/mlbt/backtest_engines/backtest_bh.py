@@ -8,7 +8,7 @@ import pandas as pd
 from typing import Optional, Dict, Tuple
 import math
 
-from mlbt.strategies import StrategyResult
+from mlbt.strategy_result import StrategyResult
 
 
 def backtest_bh(

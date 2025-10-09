@@ -2,14 +2,23 @@
 /data/
 /results/
 /results_deprecated/
+/src/mlbt/strategies_deprecated/
 /outputs/
 /scripts/old/
 /transition_prompts
-
+/notebooks/
 
 # excluded files
-/notebooks/testing.ipynb
-/notebooks/dev.ipynb
+# notebooks/testing.ipynb
+# notebooks/dev.ipynb
+
+# temporary added for clean up
+config/run.yaml
+config/run2.yaml
+config/universes/2025-09_default_universe_simple.txt
+config/universes/2025-09_default_universe.csv
+config/universes/2025-09_total_universe_dividend_split_safe.csv
+scripts/benchmarks.py
 
 # random file?
 .DS_Store

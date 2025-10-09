@@ -3,11 +3,11 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from mlbt.strategies import StrategyResult
+from mlbt.strategy_result import StrategyResult
 from mlbt.utils import build_run_meta
 from mlbt.utils import validate_month_grid_index, validate_px_wide_index
 from mlbt.trainer import walkforward_elasticnet_v0
-from mlbt.backtest_topn import backtest_topn
+from mlbt.backtest_engines import backtest_topn
 from mlbt.io import save_backtest_runs
 
 

@@ -1,4 +1,4 @@
-# src/mlbt/strategies/result.py
+# src/mlbt/result.py
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, List

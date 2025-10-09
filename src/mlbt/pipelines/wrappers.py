@@ -15,8 +15,8 @@ from mlbt.universe import load_universe
 from mlbt.load_prices import load_prices
 from mlbt.calendar import build_month_end_grid
 from mlbt.pipelines.ml_elasticnet_topn import run_elasticnet_topn_v0
-from mlbt.strategies import StrategyResult
-from mlbt.backtest_bh import backtest_bh
+from mlbt.strategy_result import StrategyResult
+from mlbt.backtest_engines import backtest_bh
 from mlbt.visualisation import plot_equities
 
 PROJECT_ROOT = find_project_root()
