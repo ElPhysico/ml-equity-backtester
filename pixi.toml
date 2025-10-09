@@ -18,8 +18,10 @@ python-dotenv = ">=1.0.1,<2"
 jupyter = "*"
 pyarrow = ">=14.0"
 pip = ">=25.2,<26"
-ml-equity-backtester = { path = ".", editable = true }
 
+
+[tasks]
+dev-install = "pip install -e ."
 
 
 [tasks.benchmarks_download]

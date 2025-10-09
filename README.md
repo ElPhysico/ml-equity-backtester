@@ -25,6 +25,7 @@ git clone https://github.com/ElPhysico/ml-equity-backtester.git
 cd ml-equity-backtester
 
 pixi install
+pixi run dev-install
 ```
 
 2. Create the dotenv file `.env`
