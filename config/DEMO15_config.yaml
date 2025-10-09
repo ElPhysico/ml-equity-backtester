@@ -1,15 +1,16 @@
 data_start: "2015-07-16"  # "2015-07-16" is a split-safe start for DEMO15
-data_end: "2025-09-30"
+data_end: "2025-10-07"
 
 benchmarks:
   - CSPX.L                            # SP500
   - IWDA.AS                           # MSCI World
+  - BH_EW_self                        # Buy-and-Hold equal weight of universe
 
 universe_file: "2025-10_DEMO15.csv"   # contains the ticker universe
 
 save: True                            # toggles saving backtest data to disc
 out_dir: "outputs"                    # save dir relative to project root
-run_name: "DEMO15_ElasticNet"
+run_name: "DEMO15"
 
 feature_params:
   P: 12                               # momentum lookback months
