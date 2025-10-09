@@ -1,0 +1,31 @@
+data_start: "2015-07-16"  # "2015-07-16" is a split-safe start for DEMO15
+data_end: "2025-10-07"
+
+benchmarks:
+  - CSPX.L                            # SP500
+  - IWDA.AS                           # MSCI World
+  - BH_EW_self                        # Buy-and-Hold equal weight of universe
+
+universe_file: "2025-10_DEMO15.csv"   # contains the ticker universe
+
+save: True                            # toggles saving backtest data to disc
+out_dir: "outputs"                    # save dir relative to project root
+run_name: "DEMO15"
+
+feature_params:
+  P: 12                               # momentum lookback months
+  skip: 1                             # momentum skip months
+  min_obs: 10                         # min observables for monthly volatility
+  annualize: False                    # annualize volatility?
+  ddof: 0                             # delta degrees of freedom for std
+
+model_params:
+  alpha: 0.001                        # regularization strength
+  l1_ratio: 0.5                       # L1 - L2 penalty mixing
+  random_state: 0                     # no effect with current implementation
+  min_train_samples: 100              # skip months with fewer samples
+
+backtest_params:
+  rank_col: "y_pred"                  # label column used for ranking top-N
+  N: 5                                # top-N tickers to select each month
+  cost_bps: 5                         # one-way trading cost in basis points

@@ -20,10 +20,6 @@ config/universes/2025-09_default_universe.csv
 config/universes/2025-09_total_universe_dividend_split_safe.csv
 scripts/benchmarks.py
 
-config2/
-notebooks2/
-scripts2/
-
 # random file?
 .DS_Store
 
