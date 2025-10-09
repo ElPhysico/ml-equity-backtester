@@ -50,7 +50,8 @@ def resolve_features_output_dir(
     Build a deterministic path where the panel artifacts live.
     Layout: outputs/feature_panel/<universe_id>/start=YYYY-MM__end=YYYY-MM/<config_hash>/
     """
-    root = base_out_dir or (find_project_root() / "outputs" / "feature_panel")
+    root = base_out_dir or (find_project_root() / "outputs")
+    root /= "feature_panel"
     out = (root / universe_id / f"start={start_month}__end={end_month}" / config_hash)
     # out.mkdir(parents=True, exist_ok=True)
     return out
@@ -108,7 +109,8 @@ def resolve_labels_output_dir(
     Build a deterministic path where the label artifacts live.
     Layout: outputs/labels/<universe_id>/start=YYYY-MM__end=YYYY-MM/<config_hash>/
     """
-    root = base_out_dir or (find_project_root() / "outputs" / "labels")
+    root = base_out_dir or (find_project_root() / "outputs")
+    root /= "labels"
     out = (root / universe_id / f"start={start_month}__end={end_month}" / config_hash)
     # out.mkdir(parents=True, exist_ok=True)
     return out
@@ -126,7 +128,7 @@ def save_labels(
     start_month = meta["data_coverage"]["start"]
     end_month = meta["data_coverage"]["end"]
     config_hash = meta["config_hash"]
-    
+
     out_dir = resolve_labels_output_dir(universe_id, start_month, end_month, config_hash, base_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     # Parquet
@@ -163,7 +165,8 @@ def resolve_backtests_output_dir(
     Build a deterministic path where the backtests artifacts live.
     Layout: outputs/backtests/YYYYMMDD-HHMMSS_<shortsha>
     """
-    root = base_out_dir or (find_project_root() / "outputs" / "backtests")
+    root = base_out_dir or (find_project_root() / "outputs")
+    root /= "backtests"
 
     created_at = utc_now_iso()
     stamp = created_at.replace("-", "").replace(":", "").replace("Z", "").replace("T", "-")
