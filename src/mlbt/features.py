@@ -85,8 +85,7 @@ def vol_1m(
         If True, multiply by sqrt(252) and write the column as 'ann_vol_1m'.
         If False, write the raw within-month stdev as 'vol_1m'.
     ddof : int, default 0
-        Delta degrees of freedom for the standard deviation (0=population, 1=sample).
-        Use a value consistent with your metrics module.
+        Delta degrees of freedom for the standard deviation (0=population, 1=sample). Use value consistent with metrics module.
 
     Returns
     -------
