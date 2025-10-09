@@ -28,6 +28,15 @@ class MetricsResult:
         if name is not None:
             s.name = name
         return s
+    
+    def to_string(self) -> str:
+        s = f"Total return: {100*self.total_return:.2f}%"
+        s += f" | Sharpe: {self.sharpe:.2f}"
+        s += f" | CAGR: {100*self.cagr:.2f}%"
+        s += f" | MaxDD: {100*self.max_drawdown:.2f}%"
+        s += f" | Ann. Volatility: {100*self.vol_ann:.2f}%"
+        return s
+
 
 
 # ---------------- Helpers ----------------
