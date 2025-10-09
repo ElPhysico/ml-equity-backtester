@@ -5,7 +5,9 @@ from pathlib import Path
 from datetime import datetime, UTC
 import os
 import json
-from typing import Any, Dict, List, Optional, Tuple, Union, Sequence
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Sequence, get_origin, Mapping, MutableMapping
+import inspect
+import logging
 
 PROJECT_SENTINELS = ("pyproject.toml", ".git")
 
@@ -31,21 +33,97 @@ def validate_month_grid_index(month_grid: pd.DataFrame) -> None:
     if "month" not in month_grid.index.names or "ticker" not in month_grid.index.names:
         raise ValueError("Month/ticker grids index must have levels ['month','ticker'].")
     
-def validate_columns_exist(df: pd.DataFrame,
-                           cols: Union[str, Sequence[str]]) -> None:
+def validate_columns_exist(
+    df: pd.DataFrame,
+    cols: Union[str, Sequence[str]]
+) -> None:
     """
-    Raise ValueError if any of the required column(s) are missing in `df`.
-    Accepts a single column name or a sequence of names.
+    Raise ValueError if any of the required column(s) are missing in `df`. Accepts a single column name or a sequence of names.
     """
     required = [cols] if isinstance(cols, str) else list(cols)
     missing = [c for c in required if c not in df.columns]
 
     if missing:
         raise ValueError(f"Missing required column(s): {missing}")
-
+    
+def validate_config(
+    config: Dict,
+    required: Union[str, Sequence[str]]
+) -> None:
+    """
+    Raise ValueError if any of the required keyword(s) are missing in config. Accepts a single keyword or a sequence of keywords.
+    """
+    required = [required] if isinstance(required, str) else list(required)
+    missing = [c for c in required if c not in config]
+    
+    if missing:
+        raise ValueError(f"Missing required keywords in config: {missing}")
 
 # ---------------- Helper ----------------
 
+def bind_config(
+        func: Callable[..., Any],
+        config: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Forward only keys that the func accepts.
+    """
+    sig = inspect.signature(func)
+    return {
+        k: v for k, v in config.items()
+        if k in sig.parameters
+    }
+
+def _is_dict_annotation(ann: Any) -> bool:
+    """Return True if the annotation is dict-like (dict/Dict/Mapping/MutableMapping)."""
+    if ann is inspect._empty:
+        return False
+    origin = get_origin(ann) or ann
+    return origin in (dict, Dict, Mapping, MutableMapping)
+
+def dict_param_names(func: Callable[..., Any]) -> set[str]:
+    """Names of parameters annotated as dict-like."""
+    sig = inspect.signature(func)
+    return {
+        name
+        for name, p in sig.parameters.items()
+        if _is_dict_annotation(p.annotation)
+    }
+
+def bind_nested_configs(
+    func: Callable[..., Any],
+    cfg: Mapping[str, Any],
+    schema_map: Mapping[str, Callable[..., Any]],
+) -> Dict[str, Any]:
+    """
+    Re-bind nested dict params using schema_map {param_name: sub_func}.
+    Only processes keys present in cfg and whose values are dicts.
+    If the func's parameter isn't annotated as dict-like, it will still be processed
+    if it's explicitly listed in schema_map (opt-in override).
+    """
+    out = dict(bind_config(func, cfg))  # start with top-level binding
+
+    dict_like = dict_param_names(func)
+    for pname, sub_func in schema_map.items():
+        if pname in out:
+            val = out[pname]
+            if isinstance(val, dict) and (pname in dict_like or pname in schema_map):
+                out[pname] = bind_config(sub_func, val)
+    return out
+
+def clean_dict(
+    dic: Dict[str, Any],
+    allowed: Union[str, Sequence[str]]
+) -> Dict[str, Any]:
+    if dic is not None:
+        invalid = set(dic) - set(allowed)
+        if invalid:
+            logging.warning(
+                "Ignoring unsupported keys: %s",
+                ", ".join(sorted(invalid))
+            )
+        dic = {k: v for k, v in dic.items() if k in allowed}
+    return dic
 
 def sha1_of_str(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
@@ -68,7 +146,7 @@ def to_iso_date(dt: pd.Timestamp) -> str:
     except Exception:
         return str(dt)
 
-def find_project_root(start: Path | None = None) -> Path:
+def find_project_root(start: Optional[Path] = None) -> Path:
     """
     Resolve the project root by:
       1) MLBT_ROOT env var, if set
