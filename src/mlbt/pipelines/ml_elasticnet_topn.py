@@ -15,12 +15,12 @@ def run_elasticnet_topn_v0(
     px_wide: pd.DataFrame,
     month_grid: pd.DataFrame,
     *,
-    feature_params: Dict,
-    label_params: Dict,
+    feature_params: Optional[Dict] = None,
+    label_params: Optional[Dict] = None,
     model_params: Optional[Dict] = None,
     backtest_params: Optional[Dict] = None,
     run_name: Optional[str] = None,
-    save: bool = True,
+    save: bool = False,
     out_dir: Optional[Path] = None
 ) -> Tuple["StrategyResult", Dict]:
     """
@@ -39,10 +39,10 @@ def run_elasticnet_topn_v0(
     month_grid : pandas.DataFrame
         MultiIndex (month, ticker) universe grid controlling panel alignment.
 
-    feature_params : dict
+    feature_params : dict, optional
         Parameters forwarded to your feature builder (e.g. for v0: {"P": 12, "skip": 1, "min_obs": 10, "annualize": False, "ddof": 0}). If omitted keys exist, sensible defaults from the builder are used.
 
-    label_params : dict
+    label_params : dict, optional
         Parameters for the label builder.
 
     model_params : dict, optional
@@ -54,7 +54,7 @@ def run_elasticnet_topn_v0(
     run_name : str, optional
         Friendly label appearing in saved metadata and filenames.
 
-    save : bool, default=True
+    save : bool, default=False
         If True, persist predictions, backtest outputs, metrics, and metadata.
 
     out_dir : Path, optional
@@ -72,6 +72,8 @@ def run_elasticnet_topn_v0(
     validate_month_grid_index(month_grid)
 
     # create predictions
+    feature_params = {} if feature_params is None else feature_params
+    label_params = {} if label_params is None else label_params
     model_params = {} if model_params is None else model_params
     preds, pred_meta = walkforward_elasticnet_v0(
         px_wide=px_wide,
@@ -79,7 +81,8 @@ def run_elasticnet_topn_v0(
         **feature_params,
         **label_params,
         **model_params,
-        compact_meta=True
+        compact_meta=True,
+        out_dir=out_dir
     )
 
     # run top-n backtest
