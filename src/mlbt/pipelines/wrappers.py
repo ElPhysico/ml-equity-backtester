@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Tuple
 
 from mlbt.io import read_yaml
-from mlbt.utils import find_project_root, validate_config, bind_config, clean_dict
+from mlbt.utils import find_project_root, validate_config, bind_config, clean_dict, validate_px_wide_range
 from mlbt.log_utils import setup_logging
 
 from mlbt.universe import load_universe
@@ -16,6 +16,8 @@ from mlbt.load_prices import load_prices
 from mlbt.calendar import build_month_end_grid
 from mlbt.pipelines.ml_elasticnet_topn import run_elasticnet_topn_v0
 from mlbt.strategies import StrategyResult
+from mlbt.backtest_bh import backtest_bh
+from mlbt.visualisation import plot_equities
 
 PROJECT_ROOT = find_project_root()
 
@@ -123,29 +125,81 @@ def run_demo_elasticnet_topn(
         tickers=tickers,
         start=data_start,
         end=data_end
-    )
-    if px_wide.empty:
-        raise ValueError("Daily prices table is empty.")
+    )    
     me_grid = build_month_end_grid(px_wide)
-    if px_wide.index.min() > pd.Timestamp(data_start):
-        raise ValueError(f"data_start ({data_start}) is earlier than earliest record in daily prices table ({px_wide.index.min()})")
-    if px_wide.index.max() < pd.Timestamp(data_end):
-        raise ValueError(f"data_end ({data_end}) is later than latest record in daily prices table ({px_wide.index.max()})")
+    validate_px_wide_range(px_wide, data_start, data_end)
+    missing = [c for c in tickers if c not in px_wide.columns]
+    if missing:
+        raise ValueError(f"Ticker(s) {missing} not found.")
 
     # run pipeline
+    if "run_name" in cfg:
+        run_name = cfg["run_name"]
+        cfg.pop("run_name")
     res, meta = run_elasticnet_topn_v0(
         px_wide=px_wide,
         month_grid=me_grid,
-        **cfg
+        **cfg,
+        run_name= "ElasticNet_" + run_name 
     )
 
+    # load benchmarks if available
+    bench_results = []
+    if "benchmarks" in loaded_cfg and loaded_cfg["benchmarks"] is not None:
+        benchmarks = set(loaded_cfg["benchmarks"])
+    else:
+        benchmarks = set()
+    if "BH_EW_self" in benchmarks:
+        b_res, b_params = backtest_bh(px_wide, name="BH_EW_" + run_name)
+        bench_results.append(b_res)
+        benchmarks.remove("BH_EW_self")
+    if benchmarks:
+        strat_start = meta["strategy"]["strategy_start"]
+        strat_end = meta["strategy"]["strategy_end"]
+        px_wide_benchmarks = load_prices(
+            in_dir=PROJECT_ROOT / "data/equity_data/",
+            tickers=benchmarks,
+            start=strat_start,
+            end=strat_end
+        )
+        try:
+            validate_px_wide_range(px_wide_benchmarks, strat_start, strat_end)
+        except Exception as e:
+            logging.warning(f"Loading benchmark prices raised an error: {e}")
+        missing = [c for c in benchmarks if c not in px_wide_benchmarks.columns]
+        if missing:
+            logging.warning(f"Benchmark(s) {missing} not found.")
+            benchmarks = benchmarks - set(missing)
+        for bench in benchmarks:
+            b_res, b_params = backtest_bh(px_wide_benchmarks[bench].to_frame(), name="BH_EW_"+bench)
+            bench_results.append(b_res)
+    
+    # additional outputs
+    save = cfg["save"] if "save" in cfg else False
+    out_dir = PROJECT_ROOT / meta["paths"]["run_dir"] if save else None
+    plot_equities([res, *bench_results], save=save, out_dir=out_dir / "benchmarks", out_name="overlay.png")
+    if save:
+        for br in bench_results:
+            eq = br.equity.copy()
+            eq.to_csv(out_dir / "benchmarks" / f"{eq.name}.csv", header=True)
+
+    res_metrics = res.compute_metrics()
     # prepare log string
     log_string = ""
-    if "save" in cfg and cfg["save"]:
+    if save:
         log_string += f"Run ID: {meta['run_id']} | "
-    log_string += res.compute_metrics().to_string() + f" | Avg. ann. turnover: {100*res.ann_turnover:.2f}%"
+    log_string += res_metrics.to_string() + f" | Avg. ann. turnover: {100*res.ann_turnover:.2f}%"
     logging.info(log_string)
-    if "save" in cfg and cfg["save"]:
+    if save:
         logging.info(f"Output files saved to {meta['paths']['run_dir']}")
+
+    # comparison log string
+    comparison = ""
+    for br in bench_results:
+        br_metrics = br.compute_metrics()
+        delta_cagr = res_metrics.cagr - br_metrics.cagr
+        delta_sharpe = res_metrics.sharpe - br_metrics.sharpe
+        comparison += f"vs {br.name} {100*delta_cagr:.2f}% CAGR, {delta_sharpe:.2f} Sharpe | "
+    logging.info(comparison)
 
     return res, meta
