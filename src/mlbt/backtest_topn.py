@@ -42,7 +42,7 @@ def backtest_topn(
     cost_bps: float = 5.0,
     strict: bool = True,
     name: Optional[str] = None
-) -> Tuple["StrategyResult", Dict]:
+) -> Tuple[StrategyResult, Dict]:
     """
     Backtest a monthly Top-N equity selection strategy.
 
@@ -126,7 +126,9 @@ def backtest_topn(
     s = pd.Series(px.index, index=px.index)
     rebal_dates = pd.DatetimeIndex(s.groupby(px.index.to_period('M')).last().values)
     t0 = rebal_dates[0]
-    
+    # first is allocation day, last is strategy end day
+    rebal_dates = rebal_dates[1:-1]
+
     # topn map
     topn_tbl = preds.groupby("month", observed=True).head(N)
     counts = topn_tbl.groupby("month", observed=True).size()
@@ -176,7 +178,7 @@ def backtest_topn(
         w = (w * (1.0 + r)) / (1.0 + R_t)
 
         # rebalance dates
-        if t in rebal_dates[1:-1]: # no rebal on last rebal date
+        if t in rebal_dates:
             topn = topn_map[t.to_period("M")]
             w_new = pd.Series(1.0 / len(topn), index=topn)
             union = w.index.union(w_new.index)
@@ -218,9 +220,11 @@ def backtest_topn(
         .astype("float64")
     )
 
-    params = {
+    backtest_params = {
+        "rank_col": rank_col,
         "N": N,
-        "cost_bps": cost_bps
+        "cost_bps": cost_bps,
+        "strict": strict
     }
 
     res = StrategyResult(
@@ -231,14 +235,7 @@ def backtest_topn(
         entry_cost_frac=cost_bps / 1e4,
         selections=selections,
         weights=weights_df,
-        params=params
+        params=backtest_params
     )
-
-    backtest_params = {
-        "rank_col": rank_col,
-        "N": N,
-        "cost_bps": cost_bps,
-        "strict": strict
-    }
     
     return res, backtest_params
