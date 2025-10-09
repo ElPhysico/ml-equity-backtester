@@ -32,7 +32,7 @@ cmd = "python scripts/download_data.py --mode {{ mode }} --tickers CSPX.L IWDA.A
 args = [
     { "arg" = "mode", "default" = "update" },
 ]
-cmd = "python scripts/download_data.py --mode {{ mode }} --universe_file config/universes/2025-10_DEMO15.csv"
+cmd = "python scripts/download_data.py --mode {{ mode }} --universe-file config/universes/2025-10_DEMO15.csv"
 
 
 [tasks.demo_elasticnet_topn]
