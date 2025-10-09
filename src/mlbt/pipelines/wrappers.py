@@ -144,18 +144,18 @@ def run_demo_elasticnet_topn(
     )
 
     # load benchmarks if available
+    strat_start = meta["strategy"]["strategy_start"]
+    strat_end = meta["strategy"]["strategy_end"]
     bench_results = []
     if "benchmarks" in loaded_cfg and loaded_cfg["benchmarks"] is not None:
         benchmarks = set(loaded_cfg["benchmarks"])
     else:
         benchmarks = set()
     if "BH_EW_self" in benchmarks:
-        b_res, b_params = backtest_bh(px_wide, name="BH_EW_" + run_name)
+        b_res, b_params = backtest_bh(px_wide[(px_wide.index >= strat_start) & (px_wide.index <= strat_end)], name="BH_EW_" + run_name)
         bench_results.append(b_res)
         benchmarks.remove("BH_EW_self")
     if benchmarks:
-        strat_start = meta["strategy"]["strategy_start"]
-        strat_end = meta["strategy"]["strategy_end"]
         px_wide_benchmarks = load_prices(
             in_dir=PROJECT_ROOT / "data/equity_data/",
             tickers=benchmarks,
@@ -188,7 +188,7 @@ def run_demo_elasticnet_topn(
     if save:
         logging.info(f"Run ID: {meta['run_id']}")
 
-    logging.info(f"Strategy start: {meta["strategy"]["strategy_start"]}, end: {meta["strategy"]["strategy_end"]}")
+    logging.info(f"Strategy start: {strat_start}, end: {strat_end}")
 
     logging.info(f"Top-N selected: {meta["backtest_params"]["N"]} | cost_bps: {meta["backtest_params"]["cost_bps"]}")
 
