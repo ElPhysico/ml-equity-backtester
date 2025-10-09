@@ -1,4 +1,4 @@
-# 📈 ML Equity Backtester
+# ML Equity Backtester
 
 A modular framework for **building and evaluating ML-driven Top-N equity strategies** with walk-forward validation and benchmark comparison.
 
@@ -6,7 +6,7 @@ This repository demonstrates a complete workflow — from raw equity data to mac
 
 ---
 
-## 🚀 Quickstart (DEMO15 One-Button Run)
+## Quickstart (DEMO15 One-Button Run)
 
 ```bash
 # 1. Clone the repository
