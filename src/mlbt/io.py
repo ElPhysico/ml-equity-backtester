@@ -225,28 +225,24 @@ def save_backtest_runs(
     run_dir.mkdir(parents=True, exist_ok=True)
 
     # file paths
-    p_equity = run_dir / "equity.csv"
-    p_weights = run_dir / "weights.csv"
-    p_turnover = run_dir / "turnover.csv"
-    p_selections = run_dir / "selections.json"
     p_preds = run_dir / "predictions.parquet" if preds is not None else None
     p_metrics = run_dir / "metrics.json" if metrics is not None else None
     p_meta = run_dir / "run_meta.json"
 
     # Write core artifacts
-    res.equity.to_frame(name=getattr(res, "name", "strategy")).to_csv(p_equity, index=True)
-    if getattr(res, "weights", None) is not None:
-        res.weights.to_csv(p_weights, index=True)
-    if getattr(res, "turnover", None) is not None:
-        res.turnover.to_csv(p_turnover, index=True)
-    if getattr(res, "selections", None) is not None:
-        selections_iso = { to_iso_date(k): v for k, v in res.selections.items() }
-        p_selections.write_text(json.dumps(selections_iso, indent=2))
+    outpaths = res.to_csvs(run_dir, write_summary=True)
     if preds is not None:
         preds.to_parquet(p_preds, index=True)
     if metrics is not None:
         p_metrics.write_text(json.dumps(metrics, indent=2))
     p_meta.write_text(json.dumps(run_meta, indent=2))
+
+    # more file paths
+    p_equity = outpaths.get("equity", None)
+    p_weights = outpaths.get("weights", None)
+    p_turnover = outpaths.get("turnover", None)
+    p_selections = outpaths.get("selections", None)
+    p_summary = outpaths.get("summary", None)
 
     # update metadata
     root = find_project_root()
@@ -263,6 +259,7 @@ def save_backtest_runs(
             "predictions_parquet": _rel(p_preds) if p_preds else None,
             "metrics_json": _rel(p_metrics) if p_metrics else None,
             "meta_json": _rel(p_meta),
+            "summary": _rel(p_summary) if p_summary else None
         }
     })
     updated_meta["run_id"] = run_dir.name
