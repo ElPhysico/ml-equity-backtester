@@ -185,21 +185,26 @@ def run_demo_elasticnet_topn(
 
     res_metrics = res.compute_metrics()
     # prepare log string
-    log_string = ""
     if save:
-        log_string += f"Run ID: {meta['run_id']} | "
-    log_string += res_metrics.to_string() + f" | Avg. ann. turnover: {100*res.ann_turnover:.2f}%"
-    logging.info(log_string)
-    if save:
-        logging.info(f"Output files saved to {meta['paths']['run_dir']}")
+        logging.info(f"Run ID: {meta['run_id']}")
+
+    logging.info(f"Strategy start: {meta["strategy"]["strategy_start"]}, end: {meta["strategy"]["strategy_end"]}")
+
+    logging.info(f"Top-N selected: {meta["backtest_params"]["N"]} | cost_bps: {meta["backtest_params"]["cost_bps"]}")
+
+    logging.info("Metrics | " + res_metrics.to_string() + f" | ann_avg_turnover: {100*res.ann_turnover:.2f}%")
 
     # comparison log string
-    comparison = ""
-    for br in bench_results:
-        br_metrics = br.compute_metrics()
-        delta_cagr = res_metrics.cagr - br_metrics.cagr
-        delta_sharpe = res_metrics.sharpe - br_metrics.sharpe
-        comparison += f"vs {br.name} {100*delta_cagr:.2f}% CAGR, {delta_sharpe:.2f} Sharpe | "
-    logging.info(comparison)
+    if bench_results:
+        comparison = "Performance vs"
+        for br in bench_results:
+            br_metrics = br.compute_metrics()
+            delta_cagr = res_metrics.cagr - br_metrics.cagr
+            delta_sharpe = res_metrics.sharpe - br_metrics.sharpe
+            comparison += f" | [{br.name}] {100*delta_cagr:.2f}% CAGR, {delta_sharpe:.2f} Sharpe"
+        logging.info(comparison)    
+
+    if save:
+        logging.info(f"Output files saved to {meta['paths']['run_dir']}")
 
     return res, meta

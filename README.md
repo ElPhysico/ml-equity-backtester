@@ -11,7 +11,7 @@ This is a small project which I use to explore workflows around **backtesting tr
 
 So far, I've implemented basic Buy-and-Hold, Monthly-Rebalance, and Select-Top-N strategies.
 
-I am using a Pixi for my python environment, but you can use any other environment. However, by using Pixi you can just follow along and run pre-defined Pixi tasks. If you are using any other environment, you can recreate the tasks by running the commands documented in the pixi.toml.
+I am using Pixi for my python environment, but you can use any other environment. However, by using Pixi you can just follow along and run pre-defined Pixi tasks. If you are using any other environment, you can recreate the tasks by running the commands documented in the pixi.toml.
 
 Currently, to fetch market data an Alpha Vantage API key is needed (they provide a free tier). I am planning on providing synthetic market data in a future update such that anyone can run tests without requiring an API key.
     
@@ -50,7 +50,10 @@ pixi run demo_elasticnet_topn
 
 By default the demo uses the config file `config/DEMO15_config.yaml` and you should see an output log similar to this:
 ```bash
-10-10-2025 00:09:39 | INFO | Run ID: 20251009-220938+0000_87c9ac90 | Total return: 392.30% | Sharpe: 0.73 | CAGR: 20.35% | MaxDD: 46.68% | Ann. Volatility: 33.09% | Avg. ann. turnover: 104.83%
-10-10-2025 00:09:39 | INFO | Output files saved to outputs/backtests/20251009-220938+0000_87c9ac90
-10-10-2025 00:09:39 | INFO | vs BH_EW_DEMO15 -5.20% CAGR, -0.10 Sharpe | vs BH_EW_CSPX.L 5.85% CAGR, -0.15 Sharpe | vs BH_EW_IWDA.AS 9.20% CAGR, 0.04 Sharpe |
+10-10-2025 00:29:04 | INFO | Run ID: 20251009-222904+0000_87c9ac90
+10-10-2025 00:29:04 | INFO | Strategy start: 2017-02-28, end: 2025-10-07
+10-10-2025 00:29:04 | INFO | Top-N selected: 5 | cost_bps: 5.0
+10-10-2025 00:29:04 | INFO | Metrics | TR: 392.30% | Sharpe: 0.73 | CAGR: 20.35% | MaxDD: 46.68% | ann_vol: 33.09% | ann_avg_turnover: 104.83%
+10-10-2025 00:29:04 | INFO | Performance vs | [BH_EW_DEMO15] -5.20% CAGR, -0.10 Sharpe | [BH_EW_IWDA.AS] 9.20% CAGR, 0.04 Sharpe | [BH_EW_CSPX.L] 5.85% CAGR, -0.15 Sharpe
+10-10-2025 00:29:04 | INFO | Output files saved to outputs/backtests/20251009-222904+0000_87c9ac90
 ```
