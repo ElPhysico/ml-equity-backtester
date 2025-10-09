@@ -6,7 +6,12 @@ import logging
 from typing import Optional, Sequence, Union
 
 
-def load_prices(in_dir: Union[str, Path], tickers: Sequence[str], start: Optional[Union[str, pd.Timestamp]] = None, end: Optional[Union[str, pd.Timestamp]] = None) -> pd.DataFrame:
+def load_prices(
+    in_dir: Union[str, Path],
+    tickers: Sequence[str],
+    start: Optional[Union[str, pd.Timestamp]] = None,
+    end: Optional[Union[str, pd.Timestamp]] = None
+) -> pd.DataFrame:
     """
     Returns wide price table: index=date, columns=tickers, values=close.
     """

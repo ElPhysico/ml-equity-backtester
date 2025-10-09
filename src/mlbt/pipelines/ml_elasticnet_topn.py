@@ -90,7 +90,8 @@ def run_elasticnet_topn_v0(
     res, backtest_params = backtest_topn(
         px_wide=px_wide,
         predictions=preds,
-        **backtest_params
+        **backtest_params,
+        name=run_name
     )
 
     # compute metrics

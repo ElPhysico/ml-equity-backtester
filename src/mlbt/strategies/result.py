@@ -82,39 +82,54 @@ class StrategyResult:
             "params": self.params,
         }
 
-    def to_csvs(self, output_dir: str | Path, write_summary: bool = True) -> None:
+    def to_csvs(self, output_dir: str | Path, write_summary: bool = True) -> Dict[str, Path]:
         """
         Persist common artifacts for audits and plots.
         Writes: equity.csv, (optionally) turnover.csv, weights.csv, selections.json, summary.json.
+        Returns path Dict
         """
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
+
+        outpaths = {}
 
         # Equity
         eq = self.equity.copy()
         if eq.name is None:
             eq.name = "equity"
-        eq.to_csv(out / "equity.csv", header=True)
+        this_out = out / "equity.csv"
+        eq.to_csv(this_out, header=True)
+        outpaths["equity"] = this_out
 
         # Turnover
         if self.turnover is not None:
             to = self.turnover.copy()
             if to.name is None:
                 to.name = "turnover"
-            to.to_csv(out / "turnover.csv", header=True)
+            this_out = out / "turnover.csv"
+            to.to_csv(this_out, header=True)
+            outpaths["turnover"] = this_out
 
         # Weights
         if self.weights is not None:
-            self.weights.to_csv(out / "weights.csv")
+            this_out = out / "weights.csv"
+            self.weights.to_csv(this_out)
+            outpaths["weights"] = this_out
 
         # Selections (Timestamp keys → ISO strings)
         if self.selections is not None:
             sel_json = {pd.Timestamp(k).strftime("%Y-%m-%d"): v for k, v in self.selections.items()}
-            (out / "selections.json").write_text(json.dumps(sel_json, indent=2))
+            this_out = out / "selections.json"
+            (this_out).write_text(json.dumps(sel_json, indent=2))
+            outpaths["selections"] = out / "selections.json"
 
         # Summary
         if write_summary:
-            (out / "summary.json").write_text(json.dumps(self.to_summary_dict(), indent=2))
+            this_out = out / "summary.json"
+            (this_out).write_text(json.dumps(self.to_summary_dict(), indent=2))
+            outpaths["summary"] = this_out
+
+        return outpaths
 
     # -------------------- Small utilities (no metrics logic) --------------------
 

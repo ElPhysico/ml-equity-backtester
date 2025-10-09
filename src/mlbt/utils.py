@@ -22,6 +22,21 @@ def validate_px_wide_index(px_wide: pd.DataFrame) -> None:
         raise ValueError("Index is not DatetimeIndex.")
     if not px_wide.index.is_unique:
         raise ValueError("Duplicate timestamps in index.")
+    
+def validate_px_wide_range(
+    px_wide: pd.DataFrame,
+    data_start: Union[str, pd.Timestamp],
+    data_end: Union[str, pd.Timestamp]
+) -> None:
+    """
+    Raises ValueError if px_wide is empty or does not cover the time period indicated by data_start to data_end.
+    """
+    if px_wide.empty:
+        raise ValueError("Daily prices table is empty.")
+    if px_wide.index.min() > pd.Timestamp(data_start):
+        raise ValueError(f"data_start ({data_start}) is earlier than earliest record in daily prices table ({px_wide.index.min()})")
+    if px_wide.index.max() < pd.Timestamp(data_end):
+        raise ValueError(f"data_end ({data_end}) is later than latest record in daily prices table ({px_wide.index.max()})")
 
 def validate_month_grid_index(month_grid: pd.DataFrame) -> None:
     """
@@ -394,7 +409,9 @@ def build_run_meta(
     try:
         strat_info = {
             "strategy_name": getattr(res, "name", None),
-            "n_rebalances": int(len(res.rebal_dates)) if getattr(res, "rebal_dates", None) is not None else 0,
+            "strategy_start": to_iso_date(res.start_date),
+            "strategy_end": to_iso_date(res.end_date),
+            "n_rebalances": res.n_rebalances,
             "first_rebalance": to_iso_date(res.rebal_dates[0]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
             "last_rebalance": to_iso_date(res.rebal_dates[-1]) if getattr(res, "rebal_dates", None) is not None and len(res.rebal_dates) else None,
         }
