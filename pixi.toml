@@ -38,6 +38,8 @@ args = [
 cmd = "python scripts/download_data.py --mode {{ mode }} --universe-file config/universes/2025-10_DEMO15.csv"
 
 
-[tasks.demo_elasticnet_topn]
+[tasks.demo15_elasticnet_topn]
 cmd = "python scripts/demo15_elasticnet_topn.py"
 
+[tasks.demo_synth_elasticnet_topn]
+cmd = "python scripts/demo_synth_elasticnet_topn.py"
