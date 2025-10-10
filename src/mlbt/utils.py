@@ -149,7 +149,7 @@ def short_sha1_of_json(obj: dict, length: int = 8) -> str:
 
 def utc_now_iso() -> str:
     # ISO 8601 with 'Z' suffix
-    return datetime.now(UTC).replace(microsecond=0).isoformat() + "Z"
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 def to_iso_date(dt: pd.Timestamp) -> str:
     """YYYY-MM-DD (no time)."""

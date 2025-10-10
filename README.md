@@ -58,3 +58,60 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 10-10-2025 01:14:20 | INFO | Performance vs | [BH_EW_DEMO15] 5.09% CAGR, 0.02 Sharpe | [BH_EW_IWDA.AS] 9.20% CAGR, 0.04 Sharpe | [BH_EW_CSPX.L] 5.85% CAGR, -0.15 Sharpe
 10-10-2025 01:14:20 | INFO | Output files saved to outputs/backtests/20251009-231419+0000_87c9ac90
 ```
+
+---
+
+## The DEMO15 Universe
+
+Since the free Alpha Vantage market data does not cover dividend- and split-adjusted prices, we are forced to manually avoid such tickers that pay dividends or had recent stock splits. Furthermore, the free tier only supports 25 API calls per day.
+
+The DEMO15 universe contains 15 liquid, non dividend paying companies for which the most recent stock split was in 2015-07-15 (NFLX). With 25 API calls per day, one can easily maintain the whole universe plus the two benchmarks as a toy model universe for experiments.
+
+---
+
+## Outputs
+
+Backtest runs are saved under `outputs/backtests/` where each run has a unique ID following the schema `YYYYMMDD-HHMMSS_<shortsha>`. The saved data typically contains the equity curve, the strategy metrics, extensive meta data, and where applicable ticker selections and weights, as well as turnover information. If benchmarks were used for the backtest, there will also be a subfolder containing the benchmark equities as well as an `overlay.png` comparing the strategy against the benchmarks visually.
+
+---
+
+## Dependencies & Setup
+
+Main libraries are defined in `pixi.toml` and include:
+- numpy
+- pandas
+- scikit-learn
+- matplotlib
+- seaborn
+- alpha_vantage
+- python-dotenv
+- jupyter
+- pyarrow
+- pip
+
+Install via:
+```bash
+pixi install
+pixi run dev-install
+```
+
+---
+
+## Roadmap
+
+- Synthetic market data simulator for various scenarios and market cycles
+- Random Forest walk-forward trainer
+- Visualisations
+
+---
+
+## License
+
+MIT License - feel free to use and adapt with attribution.
+
+---
+
+## Author
+
+Kevin Klein
+LinkedIn: https://www.linkedin.com/in/kevin-klein-9a2342195/ | GitHub: https://github.com/ElPhysico/
