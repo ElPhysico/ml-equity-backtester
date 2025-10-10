@@ -171,7 +171,7 @@ def run_demo_elasticnet_topn(
             logging.warning(f"Benchmark(s) {missing} not found.")
             benchmarks = benchmarks - set(missing)
         for bench in benchmarks:
-            b_res, b_params = backtest_bh(px_wide_benchmarks[bench].to_frame(), name="BH_EW_"+bench)
+            b_res, b_params = backtest_bh(px_wide_benchmarks[bench].to_frame(), name="BH_"+bench)
             bench_results.append(b_res)
     
     # additional outputs

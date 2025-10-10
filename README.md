@@ -72,7 +72,7 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 ### Example Strategy vs. Benchmark Performance
 ![Strategy vs Benchmark Overlay](docs/images/overlay_demo.png)
 
-Here, the prefix `BH_EW` stands for Buy-and-Hold Equal Weight.
+Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
 
 ---
 
