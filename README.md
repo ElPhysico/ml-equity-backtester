@@ -114,4 +114,5 @@ MIT License - feel free to use and adapt with attribution.
 ## Author
 
 Kevin Klein
+
 LinkedIn: https://www.linkedin.com/in/kevin-klein-9a2342195/ | GitHub: https://github.com/ElPhysico/
