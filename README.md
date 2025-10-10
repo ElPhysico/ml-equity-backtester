@@ -1,6 +1,6 @@
 # ML Equity Backtester — Walk-Forward Machine Learning and Quantitative Strategy Evaluation
 
-In this project I exploresworkflows for **backtesting trading strategies**, with a focus on **machine-learning-driven approaches**, including:
+In this project I explore workflows for **backtesting trading strategies**, with a focus on **machine-learning-driven approaches**, including:
 - Fetching market data via API
 - Managing, curating, storing, and preparing data
 - Computing features (Lookback-skip momentum, volatility, ...)
@@ -61,12 +61,12 @@ pixi run demo_elasticnet_topn
 
 The demo uses the config file `config/DEMO15_config.yaml` and you should see an output log similar to this:
 ```bash
-10-10-2025 01:14:20 | INFO | Run ID: 20251009-231419+0000_87c9ac90
-10-10-2025 01:14:20 | INFO | Strategy start: 2017-02-28, end: 2025-10-07
-10-10-2025 01:14:20 | INFO | Top-N selected: 5 | cost_bps: 5.0
-10-10-2025 01:14:20 | INFO | Metrics | TR: 392.30% | Sharpe: 0.73 | CAGR: 20.35% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
-10-10-2025 01:14:20 | INFO | Performance vs | [BH_EW_DEMO15] 5.09% CAGR, 0.02 Sharpe | [BH_EW_IWDA.AS] 9.20% CAGR, 0.04 Sharpe | [BH_EW_CSPX.L] 5.85% CAGR, -0.15 Sharpe
-10-10-2025 01:14:20 | INFO | Output files saved to outputs/backtests/20251009-231419+0000_87c9ac90
+10-10-2025 13:54:30 | INFO | Run ID: 20251010-115430_87c9ac90
+10-10-2025 13:54:30 | INFO | Strategy start: 2017-02-28, end: 2025-10-09
+10-10-2025 13:54:30 | INFO | Top-N selected: 5 | cost_bps: 5.0
+10-10-2025 13:54:30 | INFO | Metrics | TR: 406.06% | Sharpe: 0.74 | CAGR: 20.72% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
+10-10-2025 13:54:30 | INFO | Performance vs | [BH_EW_DEMO15] 4.91% CAGR, 0.01 Sharpe | [BH_CSPX.L] 6.26% CAGR, -0.14 Sharpe | [BH_IWDA.AS] 9.46% CAGR, 0.04 Sharpe
+10-10-2025 13:54:30 | INFO | Output files saved to outputs/backtests/20251010-115430_87c9ac90
 ```
 
 ### Example Strategy vs. Benchmark Performance
