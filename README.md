@@ -64,7 +64,7 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 10-10-2025 01:14:20 | INFO | Run ID: 20251009-231419+0000_87c9ac90
 10-10-2025 01:14:20 | INFO | Strategy start: 2017-02-28, end: 2025-10-07
 10-10-2025 01:14:20 | INFO | Top-N selected: 5 | cost_bps: 5.0
-10-10-2025 01:14:20 | INFO | Metrics | TR: 392.30% | Sharpe: 0.73 | CAGR: 20.35% | MaxDD: 46.68% | ann_vol: 33.09% | ann_avg_turnover: 104.83%
+10-10-2025 01:14:20 | INFO | Metrics | TR: 392.30% | Sharpe: 0.73 | CAGR: 20.35% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
 10-10-2025 01:14:20 | INFO | Performance vs | [BH_EW_DEMO15] 5.09% CAGR, 0.02 Sharpe | [BH_EW_IWDA.AS] 9.20% CAGR, 0.04 Sharpe | [BH_EW_CSPX.L] 5.85% CAGR, -0.15 Sharpe
 10-10-2025 01:14:20 | INFO | Output files saved to outputs/backtests/20251009-231419+0000_87c9ac90
 ```
