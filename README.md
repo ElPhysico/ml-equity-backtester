@@ -8,6 +8,8 @@ In this project I explore workflows for **backtesting trading strategies**, with
 - Backtesting strategies against historical market data
 - Evaluating strategies using typical metrics (TR, CAGR, Sharpe, Vol, MaxDD, ...)
 - Documenting and reporting results
+- Creating synthetic market data with various flavors
+- Studying equity price theory (GBM, fat tails, regimes, correlation, ...)
 
 So far, I've implemented basic Buy-and-Hold, Monthly-Rebalance, and Select-Top-N strategies.
 
@@ -24,6 +26,7 @@ Currently, to fetch market data an Alpha Vantage API key is needed (they provide
 - Walk-forward ElasticNet model for out-of-sample testing
 - Automated benchmark comparison and performance reporting
 - Designed for easy extension (new models, new features, new universes)
+- Built-in synthetic market data simulator
 
 ---
 
