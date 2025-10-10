@@ -34,7 +34,7 @@ class MetricsResult:
         s += f" | Sharpe: {self.sharpe:.2f}"
         s += f" | CAGR: {100*self.cagr:.2f}%"
         s += f" | MaxDD: {100*self.max_drawdown:.2f}%"
-        s += f" | ann_vol: {100*self.vol_ann:.2f}%"
+        s += f" | Ann. Vol: {100*self.vol_ann:.2f}%"
         return s
 
 

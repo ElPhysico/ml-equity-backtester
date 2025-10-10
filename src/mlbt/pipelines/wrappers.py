@@ -192,7 +192,7 @@ def run_demo_elasticnet_topn(
 
     logging.info(f"Top-N selected: {meta["backtest_params"]["N"]} | cost_bps: {meta["backtest_params"]["cost_bps"]}")
 
-    logging.info("Metrics | " + res_metrics.to_string() + f" | ann_avg_turnover: {100*res.ann_turnover:.2f}%")
+    logging.info("Metrics | " + res_metrics.to_string() + f" | Ann. avg. turnover: {100*res.ann_turnover:.2f}%")
 
     # comparison log string
     if bench_results:

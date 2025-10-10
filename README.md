@@ -1,4 +1,4 @@
-# ML Equity Backtester
+# ML Equity Backtester — Walk-Forward Machine Learning and Quantitative Strategy Evaluation
 
 This is a small project which I use to explore workflows around **backtesting trading strategies** with a focus on **ML driven strategies**, including:
 - Fetching market data via API
@@ -14,7 +14,17 @@ So far, I've implemented basic Buy-and-Hold, Monthly-Rebalance, and Select-Top-N
 I am using Pixi for my python environment, but you can use any other environment. However, by using Pixi you can just follow along and run pre-defined Pixi tasks. If you are using any other environment, you can recreate the tasks by running the commands documented in the pixi.toml.
 
 Currently, to fetch market data an Alpha Vantage API key is needed (they provide a free tier). I am planning on providing synthetic market data in a future update such that anyone can run tests without requiring an API key.
-    
+
+---
+
+## Project overview
+
+- Modular backtesting framework for ML-based and rule-based strategies
+- Includes Top-N selection, Buy-and-Hold, and Monthly-Rebalance baselines
+- Walk-forward ElasticNet model for out-of-sample testing
+- Automated benchmark comparison and performance reporting
+- Designed for easy extension (new models, new features, new universes)
+
 ---
 
 ## Quickstart Demo (requires Alpha Vantage API key)
@@ -59,13 +69,16 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 10-10-2025 01:14:20 | INFO | Output files saved to outputs/backtests/20251009-231419+0000_87c9ac90
 ```
 
+### Example Strategy vs. Benchmark Performance
+![Strategy vs Benchmark Overlay](docs/images/overlay_demo.png)
+
 ---
 
 ## The DEMO15 Universe
 
 Since the free Alpha Vantage market data does not cover dividend- and split-adjusted prices, we are forced to manually avoid such tickers that pay dividends or had recent stock splits. Furthermore, the free tier only supports 25 API calls per day.
 
-The DEMO15 universe contains 15 liquid, non dividend paying companies for which the most recent stock split was in 2015-07-15 (NFLX). With 25 API calls per day, one can easily maintain the whole universe plus the two benchmarks as a toy model universe for experiments.
+The DEMO15 universe contains 15 liquid, non-dividend-paying companies for which the most recent stock split was in 2015-07-15 (NFLX). With 25 API calls per day, one can easily maintain the whole universe plus the two benchmarks as a toy model universe for experiments.
 
 ---
 
