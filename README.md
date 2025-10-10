@@ -1,6 +1,6 @@
 # ML Equity Backtester — Walk-Forward Machine Learning and Quantitative Strategy Evaluation
 
-This is a small project which I use to explore workflows around **backtesting trading strategies** with a focus on **ML driven strategies**, including:
+In this project I exploresworkflows for **backtesting trading strategies**, with a focus on **machine-learning-driven approaches**, including:
 - Fetching market data via API
 - Managing, curating, storing, and preparing data
 - Computing features (Lookback-skip momentum, volatility, ...)
@@ -70,6 +70,9 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 ```
 
 ### Example Strategy vs. Benchmark Performance
+
+The chart below shows the cumulative equity curve of the strategy versus the configured benchmarks, normalized to 1.0 at the start date.
+
 ![Strategy vs Benchmark Overlay](docs/images/overlay_demo.png)
 
 Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
@@ -78,31 +81,38 @@ Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal W
 
 ## The DEMO15 Universe
 
-Since the free Alpha Vantage market data does not cover dividend- and split-adjusted prices, we are forced to manually avoid such tickers that pay dividends or had recent stock splits. Furthermore, the free tier only supports 25 API calls per day.
+Since the free Alpha Vantage market data does not cover dividend- and split-adjusted prices, we are forced to manually avoid such tickers that pay dividends or had recent stock splits.
 
-The DEMO15 universe contains 15 liquid, non-dividend-paying companies for which the most recent stock split was in 2015-07-15 (NFLX). With 25 API calls per day, one can easily maintain the whole universe plus the two benchmarks as a toy model universe for experiments.
+The DEMO15 universe contains 15 liquid, non-dividend-paying stocks whose most recent split occurred in July 2015 (Netflix).
+With the Alpha Vantage free-tier limit of 25 calls per day, the universe plus two benchmarks can be maintained comfortably for experiments.
 
 ---
 
-## Outputs
+## Outputs & Reproducibility
 
-Backtest runs are saved under `outputs/backtests/` where each run has a unique ID following the schema `YYYYMMDD-HHMMSS_<shortsha>`. The saved data typically contains the equity curve, the strategy metrics, extensive meta data, and where applicable ticker selections and weights, as well as turnover information. If benchmarks were used for the backtest, there will also be a subfolder containing the benchmark equities as well as an `overlay.png` comparing the strategy against the benchmarks visually.
+Backtest runs are saved under `outputs/backtests/` where each run has a unique ID following the schema `YYYYMMDD-HHMMSS_<shortsha>`.
+
+Each run folder contains a `run_meta.json` file summarizing parameters, metrics, strategy and training information, ensuring full reproducibility.
+
+Further saved data typically includes the equity curve, the strategy metrics, and where applicable ticker selections and weights, as well as turnover information.
+
+If benchmarks were used for the backtest, there will also be a subfolder containing the benchmark equities as well as an `overlay.png` comparing the strategy against the benchmarks visually.
 
 ---
 
 ## Dependencies & Setup
 
 Main libraries are defined in `pixi.toml` and include:
-- numpy
-- pandas
-- scikit-learn
-- matplotlib
-- seaborn
-- alpha_vantage
-- python-dotenv
-- jupyter
-- pyarrow
-- pip
+| Library | Purpose |
+|----------|----------|
+| **numpy**, **pandas** | Core data handling and numerical operations |
+| **scikit-learn** | Machine learning models |
+| **matplotlib**, **seaborn** | Visualization and plotting |
+| **alpha_vantage** | Market data fetching via API |
+| **python-dotenv** | Load environment variables (API keys) |
+| **pyarrow** | Fast serialization (Parquet file support) |
+| **jupyter** | Interactive development and exploration |
+| **pixi**, **pip** | Environment and dependency management |
 
 Install via:
 ```bash
@@ -116,7 +126,8 @@ pixi run dev-install
 
 - Synthetic market data simulator for various scenarios and market cycles
 - Random Forest walk-forward trainer
-- Visualisations
+- Stress-testing and risk safeguards (e.g., exit-to-cash triggers, drawdown caps)
+- Visualizations and reporting enhancements
 
 ---
 
