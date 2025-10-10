@@ -63,7 +63,8 @@ def validate_columns_exist(
     
 def validate_config(
     config: Dict,
-    required: Union[str, Sequence[str]]
+    required: Union[str, Sequence[str]],
+    log_name: str | None = None
 ) -> None:
     """
     Raise ValueError if any of the required keyword(s) are missing in config. Accepts a single keyword or a sequence of keywords.
@@ -72,7 +73,7 @@ def validate_config(
     missing = [c for c in required if c not in config]
     
     if missing:
-        raise ValueError(f"Missing required keywords in config: {missing}")
+        raise ValueError(f"Missing required keywords in {'config' if log_name is None else log_name}: {missing}")
 
 # ---------------- Helper ----------------
 

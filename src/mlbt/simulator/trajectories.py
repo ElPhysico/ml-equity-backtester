@@ -31,21 +31,19 @@ def generate_unique_tickers(
 
 
 def simulate_gbm_trajectories(
-    n_tickers: int,
     calendar: pd.DatetimeIndex,
     *,
+    n_tickers: int = 1,
     ann_mu: float = 0.05,
     ann_sigma: float = 0.1,
-    trading_days_per_year: int = 252,
+    tdy: int = 252,
     seed: int = 0
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     rng = np.random.default_rng(seed)
 
-    dt = 1/trading_days_per_year
-
     lnS_0 = np.log(rng.integers(low=1, high=1000, size=n_tickers, endpoint=True))[:, None]
-    mu = ann_mu * dt
-    sigma = ann_sigma * np.sqrt(dt)   
+    mu = ann_mu / tdy
+    sigma = ann_sigma / np.sqrt(tdy)   
 
     n = len(calendar)
     t = np.arange(1, n)
@@ -64,7 +62,7 @@ def simulate_gbm_trajectories(
         params={
             "ann_mu": ann_mu,
             "ann_sigma": ann_sigma,
-            "TDY": trading_days_per_year
+            "TDY": tdy
         },
         seed=seed
     )

@@ -27,7 +27,57 @@ Currently, to fetch market data an Alpha Vantage API key is needed (they provide
 
 ---
 
-## Quickstart Demo (requires Alpha Vantage API key)
+## Strategy: ElasticNet (Top-N) - Features & Label introduction
+- **Label**: Next-month simple return from month-end `t` to `t+1`
+- **Features (monthly, cross-sectional)**:
+    - Momentum: log returns over `[P, skip]` months (lookback, skip recent months)
+    - Volatility: realized std over 1m window
+- **Selection**: Rank model scores; hold Top-N equal-weight next month; trading cost given by `cost_bps`
+- **Walk-forward**: Train on data `<t`, predict at `t`, and evaluate on `t+1`
+
+---
+
+## Quickstart Demo using synthetic data
+
+1. Clone the repository and install the environment:
+```bash
+git clone https://github.com/ElPhysico/ml-equity-backtester.git
+cd ml-equity-backtester
+
+pixi install
+pixi run dev-install
+```
+
+2. Backtest the demo strategy:
+```bash
+pixi run demo_synth_elasticnet_topn
+```
+
+The demo uses the config file `config/DEMO_synth_config.yaml` and you should see an output log similar to this:
+```bash
+11-10-2025 00:09:27 | INFO | Run ID: 20251010-220925_87c9ac90
+11-10-2025 00:09:27 | INFO | Strategy start: 1991-10-31, end: 2025-10-10
+11-10-2025 00:09:27 | INFO | Top-N selected: 5 | cost_bps: 5.0
+11-10-2025 00:09:27 | INFO | Metrics | TR: 623.87% | Sharpe: 0.56 | CAGR: 6.00% | MaxDD: 30.09% | Ann. Vol: 11.21% | Ann. avg. turnover: 62.32%
+11-10-2025 00:09:27 | INFO | Performance vs | [BH_EW_DEMO_synth] 2.09% CAGR, -0.49 Sharpe
+11-10-2025 00:09:27 | INFO | Output files saved to outputs/backtests/20251010-220925_87c9ac90
+```
+
+### Example Strategy vs. Benchmark Performance
+
+The chart below shows the cumulative equity curve of the strategy versus the configured benchmarks, normalized to 1.0 at the start date.
+
+![Strategy vs Benchmark Overlay](docs/images/overlay_demo_synth.png)
+
+Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
+
+---
+
+## The DEMO_synth Universe
+
+Currently, this universe only features simple **geometric Brownian motion (GBM)** equity trajectories. All tickers are independent GBMs with shared μ and σ; diversification is therefore strong. Upcoming versions will add correlation and fat tails.
+
+## Quickstart Demo using real market data (requires Alpha Vantage API key)
 
 1. Clone the repository and install the environment:
 ```bash
@@ -56,7 +106,7 @@ pixi run benchmarks_download init
 
 5. Backtest the demo strategy:
 ```bash
-pixi run demo_elasticnet_topn
+pixi run demo15_elasticnet_topn
 ```
 
 The demo uses the config file `config/DEMO15_config.yaml` and you should see an output log similar to this:
@@ -73,7 +123,7 @@ The demo uses the config file `config/DEMO15_config.yaml` and you should see an 
 
 The chart below shows the cumulative equity curve of the strategy versus the configured benchmarks, normalized to 1.0 at the start date.
 
-![Strategy vs Benchmark Overlay](docs/images/overlay_demo.png)
+![Strategy vs Benchmark Overlay](docs/images/overlay_demo15.png)
 
 Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
 
@@ -124,7 +174,7 @@ pixi run dev-install
 
 ## Roadmap
 
-- Synthetic market data simulator for various scenarios and market cycles
+- Expanding synthetic market data simulator for various scenarios and market cycles
 - Random Forest walk-forward trainer
 - Stress-testing and risk safeguards (e.g., exit-to-cash triggers, drawdown caps)
 - Visualizations and reporting enhancements
