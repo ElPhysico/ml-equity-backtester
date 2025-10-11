@@ -13,6 +13,7 @@ benchmarks:
   # - CSPX.L                            # SP500
   # - IWDA.AS                           # MSCI World
   - BH_EW_self                        # Buy-and-Hold equal weight of universe
+  - MR_EW_self                        # Monthly rebalance equal weight universe
 
 save: True                            # toggles saving backtest data to disc
 out_dir: "outputs"                    # save dir relative to project root

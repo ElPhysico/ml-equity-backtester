@@ -7,7 +7,7 @@ import pandas as pd
 import logging
 import json
 
-from mlbt.backtest_engines import backtest_bh
+from mlbt.backtest_engines import backtest_bh, backtest_mr
 from mlbt.load_prices import load_prices
 from mlbt.utils import find_project_root, validate_px_wide_range
 from mlbt.strategy_result import StrategyResult
@@ -23,15 +23,27 @@ def load_benchmarks(
     loaded_cfg: dict[str, Any],
     run_name: str
 ) -> list[StrategyResult]:
+    kwargs = {}
+    if "backtest_params" in loaded_cfg and loaded_cfg["backtest_params"] is not None:
+        if "cost_bps" in loaded_cfg["backtest_params"]:
+            kwargs["cost_bps"] = float(loaded_cfg["backtest_params"]["cost_bps"])
+    
     bench_results = []
     if "benchmarks" in loaded_cfg and loaded_cfg["benchmarks"] is not None:
         benchmarks = set(loaded_cfg["benchmarks"])
     else:
         benchmarks = set()
+
+    if "MR_EW_self" in benchmarks:
+        b_res, b_params = backtest_mr(px_wide[(px_wide.index >= strat_start) & (px_wide.index <= strat_end)], **kwargs, name="MR_EW_" + run_name)
+        bench_results.append(b_res)
+        benchmarks.remove("MR_EW_self")
+
     if "BH_EW_self" in benchmarks:
-        b_res, b_params = backtest_bh(px_wide[(px_wide.index >= strat_start) & (px_wide.index <= strat_end)], name="BH_EW_" + run_name)
+        b_res, b_params = backtest_bh(px_wide[(px_wide.index >= strat_start) & (px_wide.index <= strat_end)], **kwargs, name="BH_EW_" + run_name)
         bench_results.append(b_res)
         benchmarks.remove("BH_EW_self")
+
     if benchmarks:
         px_wide_benchmarks = load_prices(
             in_dir=PROJECT_ROOT / "data/equity_data/",
@@ -59,7 +71,7 @@ def load_benchmarks(
 
         # now run BH strategy for remaining benchmarks
         for bench in benchmarks:
-            b_res, b_params = backtest_bh(px_wide_benchmarks[bench].to_frame(), name="BH_"+bench)
+            b_res, b_params = backtest_bh(px_wide_benchmarks[bench].to_frame(), **kwargs, name="BH_"+bench)
             bench_results.append(b_res)
 
     return bench_results
@@ -77,12 +89,12 @@ def demo_additional_outputs(
     strat_end = meta["strategy"]["strategy_end"]
 
     save = cfg["save"] if "save" in cfg else False
-    out_dir = PROJECT_ROOT / meta["paths"]["run_dir"] if save else None
-    plot_equities([res, *bench_results], save=save, out_dir=out_dir / "benchmarks", out_name="overlay.png")
+    out_dir = PROJECT_ROOT / meta["paths"]["run_dir"] / "benchmarks" if save else None
+    plot_equities([res, *bench_results], save=save, out_dir=out_dir, out_name="overlay.png")
     if save:
         for br in bench_results:
             eq = br.equity.copy()
-            eq.to_csv(out_dir / "benchmarks" / f"{eq.name}.csv", header=True)
+            eq.to_csv(out_dir / f"{eq.name}.csv", header=True)
 
     res_metrics = res.compute_metrics()
     # prepare log string

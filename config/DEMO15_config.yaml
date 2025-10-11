@@ -5,6 +5,7 @@ benchmarks:
   - CSPX.L                            # SP500
   - IWDA.AS                           # MSCI World
   - BH_EW_self                        # Buy-and-Hold equal weight of universe
+  - MR_EW_self                        # Monthly rebalance equal weight universe
 
 universe_file: "2025-10_DEMO15.csv"   # contains the ticker universe
 

@@ -72,7 +72,7 @@ The chart below shows the cumulative equity curve of the strategy versus the con
 
 ![Strategy vs Benchmark Overlay](docs/images/overlay_demo_synth.png)
 
-Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
+Here, the prefix `BH` stands for *Buy-and-Hold*, `MR` for *Monthly Rebalance*, and `EW` for *Equal Weight*.
 
 ---
 
@@ -128,7 +128,7 @@ The chart below shows the cumulative equity curve of the strategy versus the con
 
 ![Strategy vs Benchmark Overlay](docs/images/overlay_demo15.png)
 
-Here, the prefix `BH` stands for *Buy-and-Hold* and the prefix `EW` for *Equal Weight*.
+Here, the prefix `BH` stands for *Buy-and-Hold*, `MR` for *Monthly Rebalance*, and `EW` for *Equal Weight*.
 
 ---
 

@@ -25,7 +25,6 @@ All input data should be pre-curated to exclude dividend effects or splits, or
 should use adjusted prices to ensure return consistency.
 """
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
 import logging
 
 from mlbt.strategy_result import StrategyResult
@@ -41,8 +40,8 @@ def backtest_topn(
     N: int = 10,
     cost_bps: float = 5.0,
     strict: bool = True,
-    name: Optional[str] = None
-) -> Tuple[StrategyResult, Dict]:
+    name: str | None = None
+) -> tuple[StrategyResult, dict]:
     """
     Backtest a monthly Top-N equity selection strategy.
 
@@ -59,11 +58,11 @@ def backtest_topn(
         ticker.  The index is used to infer month-end rebalance dates.
 
     predictions : pandas.DataFrame
-        MultiIndex DataFrame with index levels `["month", "ticker"]` containing
+        MultiIndex DataFrame with index levels `['month', 'ticker']` containing
         at least the column specified by `rank_col`.  Each row represents the
         model signal or score for a given month and ticker.
 
-    rank_col : str
+    rank_col : str, default 'y_pred'
         Name of the column in `predictions` to rank tickers by.  Higher values
         correspond to stronger buy signals.
 
@@ -83,7 +82,7 @@ def backtest_topn(
 
     Returns
     -------
-    (res, backtest_params) : Tuple[StrategyResult, dict]
+    (res, backtest_params) : tuple[StrategyResult, dict]
         `res`: StrategyResult of the Top-N backtest.
         `backtest_params`: Dictionary containing the backtest params used.
 
@@ -138,7 +137,7 @@ def backtest_topn(
             f"{len(bad_months)} months do not have exactly N={N} tickers, "
             f"examples:\n{bad_months.head(3)}"
         )
-    topn_map: Dict[pd.Period, pd.Index] = topn_tbl.reset_index().groupby("month", observed=True)["ticker"].apply(pd.Index).to_dict()
+    topn_map: dict[pd.Period, pd.Index] = topn_tbl.reset_index().groupby("month", observed=True)["ticker"].apply(pd.Index).to_dict()
     
     # initial portfolio allocation on first rebalance date
     topn = topn_map[t0.to_period("M")]
@@ -148,9 +147,9 @@ def backtest_topn(
     eq = 1.0
     equity = [eq] # construct daily equity curve
     charged_init = False # initial investment fee not charged yet
-    weights_map: Dict[pd.Timestamp, pd.Series] = {}
-    turnover_items: Dict[pd.Timestamp, float] = {}
-    selections: Dict[pd.Timestamp, List[str]] = {}
+    weights_map: dict[pd.Timestamp, pd.Series] = {}
+    turnover_items: dict[pd.Timestamp, float] = {}
+    selections: dict[pd.Timestamp, list[str]] = {}
 
     weights_map[t0] = w.copy()
     selections[t0] = topn.tolist().copy()

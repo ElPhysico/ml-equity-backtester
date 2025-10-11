@@ -6,7 +6,7 @@ This module holds tools and helpers to visualise a variety of data, such as equi
 """
 import pandas as pd
 from pathlib import Path
-from typing import Sequence, Optional
+from collections.abc import Sequence
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -15,9 +15,9 @@ from mlbt.strategy_result import StrategyResult
 
 def plot_equities(
     results: Sequence[StrategyResult],
-    names: Optional[Sequence[str]] = None,
+    names: Sequence[str] | None = None,
     save: bool = False,
-    out_dir: Optional[Path] = None,
+    out_dir: Path | None = None,
     out_name: str = "equities.png"
 ) -> None:
     if names is None:
