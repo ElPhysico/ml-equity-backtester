@@ -58,12 +58,12 @@ pixi run demo_synth_elasticnet_topn
 
 The demo uses the config file `config/DEMO_synth_config.yaml` and you should see an output log similar to this:
 ```bash
-11-10-2025 00:09:27 | INFO | Run ID: 20251010-220925_87c9ac90
-11-10-2025 00:09:27 | INFO | Strategy start: 1991-10-31, end: 2025-10-10
-11-10-2025 00:09:27 | INFO | Top-N selected: 5 | cost_bps: 5.0
-11-10-2025 00:09:27 | INFO | Metrics | TR: 623.87% | Sharpe: 0.56 | CAGR: 6.00% | MaxDD: 30.09% | Ann. Vol: 11.21% | Ann. avg. turnover: 62.32%
-11-10-2025 00:09:27 | INFO | Performance vs | [BH_EW_DEMO_synth] 2.09% CAGR, -0.49 Sharpe
-11-10-2025 00:09:27 | INFO | Output files saved to outputs/backtests/20251010-220925_87c9ac90
+11-10-2025 15:34:09 | INFO | Run ID: 20251011-133401_87c9ac90
+11-10-2025 15:34:09 | INFO | Strategy start: 1991-10-31, end: 2025-10-10
+11-10-2025 15:34:09 | INFO | Top-N selected: 5 | cost_bps: 5.0
+11-10-2025 15:34:09 | INFO | Metrics | TR: 1113.49% | Sharpe: 0.69 | CAGR: 7.63% | MaxDD: 34.31% | Ann. Vol: 11.15% | Ann. avg. turnover: 63.11%
+11-10-2025 15:34:09 | INFO | Performance vs | [MR_EW_DEMO_synth] 2.75% CAGR, -1.15 Sharpe | [BH_EW_DEMO_synth] 3.72% CAGR, -0.35 Sharpe
+11-10-2025 15:34:09 | INFO | Output files saved to outputs/backtests/20251011-133401_87c9ac90
 ```
 
 ### Example Strategy vs. Benchmark Performance
@@ -114,12 +114,12 @@ pixi run demo15_elasticnet_topn
 
 The demo uses the config file `config/DEMO15_config.yaml` and you should see an output log similar to this:
 ```bash
-10-10-2025 13:54:30 | INFO | Run ID: 20251010-115430_87c9ac90
-10-10-2025 13:54:30 | INFO | Strategy start: 2017-02-28, end: 2025-10-09
-10-10-2025 13:54:30 | INFO | Top-N selected: 5 | cost_bps: 5.0
-10-10-2025 13:54:30 | INFO | Metrics | TR: 406.06% | Sharpe: 0.74 | CAGR: 20.72% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
-10-10-2025 13:54:30 | INFO | Performance vs | [BH_EW_DEMO15] 4.91% CAGR, 0.01 Sharpe | [BH_CSPX.L] 6.26% CAGR, -0.14 Sharpe | [BH_IWDA.AS] 9.46% CAGR, 0.04 Sharpe
-10-10-2025 13:54:30 | INFO | Output files saved to outputs/backtests/20251010-115430_87c9ac90
+11-10-2025 15:34:53 | INFO | Run ID: 20251011-133451_87c9ac90
+11-10-2025 15:34:53 | INFO | Strategy start: 2017-02-28, end: 2025-10-09
+11-10-2025 15:34:53 | INFO | Top-N selected: 5 | cost_bps: 5.0
+11-10-2025 15:34:53 | INFO | Metrics | TR: 406.06% | Sharpe: 0.74 | CAGR: 20.72% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
+11-10-2025 15:34:53 | INFO | Performance vs | [MR_EW_DEMO15] 4.27% CAGR, -0.05 Sharpe | [BH_EW_DEMO15] 4.91% CAGR, 0.01 Sharpe | [BH_IWDA.AS] 9.46% CAGR, -0.02 Sharpe | [BH_CSPX.L] 6.26% CAGR, -0.14 Sharpe
+11-10-2025 15:34:53 | INFO | Output files saved to outputs/backtests/20251011-133451_87c9ac90
 ```
 
 ### Example Strategy vs. Benchmark Performance
