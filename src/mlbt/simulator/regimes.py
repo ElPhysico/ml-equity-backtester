@@ -46,11 +46,11 @@ def get_GBM_regimes(
     ).style.format(fmt)
 
     md = df[["label","mu","sigma","g = mu - 0.5*sigma^2"]].rename(
-        columns={"label":"Label","mu":"μ","sigma":"σ"}
+        columns={"label":"Label","mu": "μ","sigma":"σ","g = mu - 0.5*sigma^2":"g = μ - 0.5*σ^2"}
     ).to_string()
 
     if print_table:
-        print(md)
+        print(md.replace("mu", r"$\mu$"))
 
     return GBM_REGIMES
 
@@ -133,7 +133,7 @@ def add_regime_shades(
         # y_shift = 0.125 if i%2==1 else 0
         y_shift = 0
         ax.text(mdates.num2date(xm), ax.get_ylim()[1]*(0.97 - y_shift), seg["label"],
-                ha="center", va="top", fontsize=7, alpha=0.8)
+                ha="center", va="top", fontsize=8, alpha=0.8)
 
         # legend handle (one per label)
         handles.append(Patch(facecolor=col, alpha=alpha, label=seg["label"]))
@@ -147,10 +147,10 @@ def plot_gbm_regime(norm_px: pd.DataFrame,
                     title: str = "",
                     subtitle: str = "",
                     n_samples: int = 10,
-                    alpha_paths: float = 0.35,
+                    alpha_paths: float = 0.3,
                     lw_paths: float = 1.0,
-                    lw_index: float = 3.0,
-                    lw_median: float = 2.2,
+                    lw_index: float = 2.2,
+                    lw_median: float = 1.5,
                     band_alpha: float = 0.12,
                     y_lim: tuple[float, float] = (0.01, 10.0),
                     savepath: str| Path | None = None
