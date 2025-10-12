@@ -264,9 +264,9 @@ def visualize_gbm_regime(
 
     # subtitle creation
     if len(regimes) > 10:
-        subtitle = f"N={norm.shape[1]} | TDY={tdy} | Regimes={len(regimes)}"
+        subtitle = f"N={norm.shape[1]} tickers | TDY={tdy} | Regimes={len(regimes)}"
     elif len(regimes) > 3:
-        subtitle = f"N={norm.shape[1]} | TDY={tdy} | Regimes={len(regimes)}\n"
+        subtitle = f"N={norm.shape[1]} tickers | TDY={tdy} | Regimes={len(regimes)}\n"
         subtitle += r" $\rightarrow$ ".join(reg_names)
     else:
         params = metas[0]["params"]
