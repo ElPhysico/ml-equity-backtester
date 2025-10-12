@@ -25,18 +25,18 @@ I started this project to learn workflows around **backtesting** and **machine l
 To make experiments reproducible and API‑free, I generate **synthetic price universes**. The baseline is **Geometric Brownian Motion (GBM)**:
 
 $$
-dS_t = \mu S_t\,dt + \sigma S_t\,dW_t
+dS_t = \mu S_tdt + \sigma S_tdW_t
 $$
 
 which implies **lognormal prices**,
-$\,\mathbb{E}[S_t]=S_0 e^{\mu t}\,$ and a **typical (geometric) growth** of
-$\,g=\mu-\tfrac12\sigma^2\,$ so the median path behaves like $\,S_0e^{gt}$.
+$\mathbb{E}[S_t]=S_0 e^{\mu t}$ and a **typical (geometric) growth** of
+$g=\mu-\tfrac12\sigma^2$ so the median path behaves like $S_0e^{gt}$.
 
 What GBM gets right: positivity, compounding, tractability.  
 What it misses: fat tails, skew, volatility clustering, jumps, default.  
 I progressively add those features (correlation, t‑tails, regime switches, etc.) so strategies can be stress‑tested beyond the Gaussian world.
 
-- **Singular regimes:** fixed $(\mu,\sigma)$ over time (e.g., Bull/Low‑Vol, Bear/High‑Vol).  
+- **Singular regimes:** fixed $(\mu,\sigma)$ over time (e.g. Bull/Low‑Vol, Bear/High‑Vol).  
 - **Mixed regimes:** piecewise constant $(\mu,\sigma)$ with switch points to mimic cycles.
 
 See the visuals in `notebooks/insights/01_gbm_regimes_overview.ipynb`.
@@ -61,7 +61,7 @@ What it does:
 - Saves results to `outputs/backtests/<run_id>/` (including `run_meta.json`).
 - An example overlay vs benchmarks can be found in `docs/images/overlay_demo_synth.png`
 
-**Note on annualization:** metrics accept a configurable *trading‑days‑per‑year* (TDY). Use the same TDY you simulated with (e.g., 260 for business‑day calendars, or 252 for real‑market stats).
+**Note on annualization:** metrics accept a configurable *trading‑days‑per‑year* (TDY). Use the same TDY you simulated with (e.g. 260 for business‑day calendars, or 252 for real‑market stats).
 
 ---
 
@@ -121,8 +121,8 @@ Even in GBM worlds, the **mean vs median** split matters, diversification reduce
 ## Outputs & reproducibility
 
 Each run under `outputs/backtests/<run_id>/` includes:
-- `run_meta.json` (params, seed, TDY, simulator version, git commit, hash).  
-- Equity curves, metrics, selections/weights, overlays.  
+- `run_meta.json` (params, seed, TDY, simulator version, hash).  
+- Equity curves, metrics, selections/weights/turnovers, overlays.  
 <!-- - Synthetic runs also record regime specs. -->
 
 Artifacts are deterministic under fixed seeds.
