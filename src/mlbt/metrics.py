@@ -94,14 +94,6 @@ def _to_periodic_returns(daily_returns: pd.Series, freq: Freq) -> pd.Series:
         return gross.resample("ME").prod().dropna() - 1.0
     else:
         raise ValueError(f"Unsupported freq '{freq}'. Use 'D', 'W', or 'M'.")
-    
-def _prepend_equity_baseline(equity: pd.Series, baseline: float = 1.0) -> pd.Series:
-    eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
-    first_ts = eq.index[0]
-    prev_ts = first_ts - pd.offsets.BDay(1)
-    eq0 = pd.Series([baseline], index=pd.DatetimeIndex([prev_ts], name=equity.index.name))
-    eq = pd.concat([eq0, eq]).sort_index()
-    return eq
 
 
 # ---------------- Public metric primitives ----------------
@@ -167,8 +159,7 @@ def max_drawdown(
     elif returns is not None:
         ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
         eq = _as_equity_from_returns(ret)
-        eq_baseline = _prepend_equity_baseline(eq)
-        dd = eq_baseline / eq_baseline.cummax() - 1.0
+        dd = eq / eq.cummax() - 1.0
         return float(-dd.min())
     else:
         raise ValueError("Either equity or returns are required to compute max drawdown.")
