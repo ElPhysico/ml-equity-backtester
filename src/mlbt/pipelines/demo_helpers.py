@@ -11,7 +11,7 @@ from mlbt.backtest_engines import backtest_bh, backtest_mr
 from mlbt.load_prices import load_prices
 from mlbt.utils import find_project_root, validate_px_wide_range
 from mlbt.strategy_result import StrategyResult
-from mlbt.visualisation import plot_equities
+from mlbt.visualisation import plot_results
 
 PROJECT_ROOT = find_project_root()
 
@@ -90,7 +90,7 @@ def demo_additional_outputs(
 
     save = cfg["save"] if "save" in cfg else False
     out_dir = PROJECT_ROOT / meta["paths"]["run_dir"] / "benchmarks" if save else None
-    plot_equities([res, *bench_results], save=save, out_dir=out_dir, out_name="overlay.png")
+    plot_results([res, *bench_results], save=save, out_dir=out_dir, out_name="overlay.png")
     if save:
         for br in bench_results:
             eq = br.equity.copy()

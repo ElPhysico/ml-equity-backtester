@@ -13,7 +13,7 @@ import seaborn as sns
 from mlbt.strategy_result import StrategyResult
 
 
-def plot_equities(
+def plot_results(
     results: Sequence[StrategyResult],
     names: Sequence[str] | None = None,
     save: bool = False,

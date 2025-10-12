@@ -30,6 +30,9 @@ def generate_unique_tickers(
     return list(tickers)
 
 
+# ---------------- GBM ----------------
+
+
 def simulate_gbm_trajectories(
     calendar: pd.DatetimeIndex,
     *,

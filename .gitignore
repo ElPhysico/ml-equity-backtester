@@ -6,7 +6,9 @@
 /outputs/
 /scripts/old/
 /transition_prompts
-/notebooks/
+# /notebooks/
+/notebooks/dev/
+# /notebooks/theory/
 
 # excluded files
 # notebooks/testing.ipynb
