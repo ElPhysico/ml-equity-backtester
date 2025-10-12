@@ -1,199 +1,149 @@
-# ML Equity Backtester — Walk-Forward Machine Learning and Quantitative Strategy Evaluation
+# ML Equity Backtester — a learning journey in quant research
 
-In this project I explore workflows for **backtesting trading strategies**, with a focus on **machine-learning-driven approaches**, including:
-- Fetching market data via API
-- Managing, curating, storing, and preparing data
-- Computing features (Lookback-skip momentum, volatility, ...)
-- Generating predictions/signals to inform trading strategies
-- Backtesting strategies against historical market data
-- Evaluating strategies using typical metrics (TR, CAGR, Sharpe, Vol, MaxDD, ...)
-- Documenting and reporting results
-- Creating synthetic market data with various flavors
-- Studying equity price theory (GBM, fat tails, regimes, correlation, ...)
+> From “how do I backtest a strategy?” to **building a market simulator**, studying **equity theory**, and **stress‑testing** strategies across regimes.
 
-So far, I've implemented basic Buy-and-Hold, Monthly-Rebalance, and Select-Top-N strategies.
-
-I am using Pixi for my python environment, but you can use any other environment. However, by using Pixi you can just follow along and run pre-defined Pixi tasks. If you are using any other environment, you can recreate the tasks by running the commands documented in the pixi.toml.
-
-Currently, to fetch market data an Alpha Vantage API key is needed (they provide a free tier). I am planning on providing synthetic market data in a future update such that anyone can run tests without requiring an API key.
+I started this project to learn workflows around **backtesting** and **machine learning for equity strategies**. Along the way I had to wrangle APIs, data management, metadata, docs, and reproducibility. The scope then expanded: I’m now **studying price theory**, **generating synthetic market data**, and **evaluating strategies** in controlled scenarios to build intuition and basic knowledge.
 
 ---
 
-## Project overview
+## What’s inside (at a glance)
 
-- Modular backtesting framework for ML-based and rule-based strategies
-- Includes Top-N selection, Buy-and-Hold, and Monthly-Rebalance baselines
-- Walk-forward ElasticNet model for out-of-sample testing
-- Automated benchmark comparison and performance reporting
-- Designed for easy extension (new models, new features, new universes)
-- Built-in synthetic market data simulator
-
----
-
-## Strategy: ElasticNet (Top-N) - Features & Label introduction
-- **Label**: Next-month simple return from month-end `t` to `t+1`
-- **Features (monthly, cross-sectional)**:
-    - Momentum: log returns over `[P, skip]` months (lookback, skip recent months)
-    - Volatility: realized std over 1m window
-- **Selection**: Rank model scores; hold Top-N equal-weight next month; trading cost given by `cost_bps`
-- **Walk-forward**: Train on data `<t`, predict at `t`, and evaluate on `t+1`
+- **Backtesting framework** for ML‑based and rule‑based strategies (walk‑forward).  
+- **Built‑in synthetic data simulator** (GBM baseline; correlation, fat tails, regimes upcoming).  
+- **Strategies:** Buy‑and‑Hold (BH), Monthly Rebalance (MR), ElasticNet Top‑N (ML), and more coming.  
+- **Reproducibility:** per‑run metadata, deterministic seeds, artifacts.  
+- **Notebooks:** 
+  - Theory: derivations and intuition — see `notebooks/theory/`
+    - Start here: [`01_gbm.ipynb`](notebooks/theory/01_gbm.ipynb)
+  - Insights: strategy behavior in different environments — see `notebooks/insights/`
+    - Start here: [`01_gbm_regimes_overview.ipynb`](notebooks/insights/01_gbm_regimes_overview.ipynb)
 
 ---
 
-## Quickstart Demo using synthetic data
+## The simulator (why & how)
 
-1. Clone the repository and install the environment:
+To make experiments reproducible and API‑free, I generate **synthetic price universes**. The baseline is **Geometric Brownian Motion (GBM)**:
+
+$$
+dS_t = \mu S_t\,dt + \sigma S_t\,dW_t
+$$
+
+which implies **lognormal prices**,
+$\,\mathbb{E}[S_t]=S_0 e^{\mu t}\,$ and a **typical (geometric) growth** of
+$\,g=\mu-\tfrac12\sigma^2\,$ so the median path behaves like $\,S_0e^{gt}$.
+
+What GBM gets right: positivity, compounding, tractability.  
+What it misses: fat tails, skew, volatility clustering, jumps, default.  
+I progressively add those features (correlation, t‑tails, regime switches, etc.) so strategies can be stress‑tested beyond the Gaussian world.
+
+- **Singular regimes:** fixed $(\mu,\sigma)$ over time (e.g., Bull/Low‑Vol, Bear/High‑Vol).  
+- **Mixed regimes:** piecewise constant $(\mu,\sigma)$ with switch points to mimic cycles.
+
+See the visuals in `notebooks/insights/01_gbm_regimes_overview.ipynb`.
+
+---
+
+## Quickstart — Synthetic data (no API key)
+
 ```bash
 git clone https://github.com/ElPhysico/ml-equity-backtester.git
 cd ml-equity-backtester
+pixi install && pixi run dev-install
 
-pixi install
-pixi run dev-install
-```
-
-2. Backtest the demo strategy:
-```bash
+# One‑command demo on GBM universe
 pixi run demo_synth_elasticnet_topn
 ```
 
-The demo uses the config file `config/DEMO_synth_config.yaml` and you should see an output log similar to this:
-```bash
-11-10-2025 15:34:09 | INFO | Run ID: 20251011-133401_87c9ac90
-11-10-2025 15:34:09 | INFO | Strategy start: 1991-10-31, end: 2025-10-10
-11-10-2025 15:34:09 | INFO | Top-N selected: 5 | cost_bps: 5.0
-11-10-2025 15:34:09 | INFO | Metrics | TR: 1113.49% | Sharpe: 0.69 | CAGR: 7.63% | MaxDD: 34.31% | Ann. Vol: 11.15% | Ann. avg. turnover: 63.11%
-11-10-2025 15:34:09 | INFO | Performance vs | [MR_EW_DEMO_synth] 2.75% CAGR, -1.15 Sharpe | [BH_EW_DEMO_synth] 3.72% CAGR, -0.35 Sharpe
-11-10-2025 15:34:09 | INFO | Output files saved to outputs/backtests/20251011-133401_87c9ac90
-```
+What it does:
+- Builds a business‑day calendar (TDY configurable, defaults noted in logs).  
+- Simulates an i.i.d. GBM universe (for now).  
+- Trains a walk‑forward ElasticNet Top‑N and benchmarks vs BH/MR.  
+- Saves results to `outputs/backtests/<run_id>/` (including `run_meta.json`).
+- An example overlay vs benchmarks can be found in `docs/images/overlay_demo_synth.png`
 
-### Example Strategy vs. Benchmark Performance
-
-The chart below shows the cumulative equity curve of the strategy versus the configured benchmarks, normalized to 1.0 at the start date.
-
-![Strategy vs Benchmark Overlay](docs/images/overlay_demo_synth.png)
-
-Here, the prefix `BH` stands for *Buy-and-Hold*, `MR` for *Monthly Rebalance*, and `EW` for *Equal Weight*.
+**Note on annualization:** metrics accept a configurable *trading‑days‑per‑year* (TDY). Use the same TDY you simulated with (e.g., 260 for business‑day calendars, or 252 for real‑market stats).
 
 ---
 
-## The DEMO_synth Universe
+## Quickstart — Real market data (Alpha Vantage)
 
-Currently, this universe only features simple **geometric Brownian motion (GBM)** equity trajectories. All tickers are independent GBMs with shared μ and σ; diversification is therefore strong. Upcoming versions will add correlation and fat tails.
-
-## Quickstart Demo using real market data (requires Alpha Vantage API key)
-
-1. Clone the repository and install the environment:
 ```bash
-git clone https://github.com/ElPhysico/ml-equity-backtester.git
-cd ml-equity-backtester
+pixi install && pixi run dev-install
+echo "ALPHA_VANTAGE_API_KEY=yourkey" > .env
 
-pixi install
-pixi run dev-install
-```
-
-2. Create the dotenv file `.env`
-```bash
-touch .env
-```
-and paste your API key inside, using the format `ALPHA_VANTAGE_API_KEY=yourkey`.
-
-3. Download the demo universe (15 tickers):
-```bash
+# Download demo universe and (optionally) benchmarks
 pixi run demo_download init
-```
+pixi run benchmarks_download init  # optional
 
-4. [Optional] Download benchmarks (2 tickers: CSPX.L (SP500), IWDA.AS (MSCI World)):
-```bash
-pixi run benchmarks_download init
-```
-
-5. Backtest the demo strategy:
-```bash
+# Backtest the demo strategy
 pixi run demo15_elasticnet_topn
 ```
 
-The demo uses the config file `config/DEMO15_config.yaml` and you should see an output log similar to this:
-```bash
-11-10-2025 15:34:53 | INFO | Run ID: 20251011-133451_87c9ac90
-11-10-2025 15:34:53 | INFO | Strategy start: 2017-02-28, end: 2025-10-09
-11-10-2025 15:34:53 | INFO | Top-N selected: 5 | cost_bps: 5.0
-11-10-2025 15:34:53 | INFO | Metrics | TR: 406.06% | Sharpe: 0.74 | CAGR: 20.72% | MaxDD: 46.68% | Ann. Vol: 33.09% | Ann. avg. turnover: 104.83%
-11-10-2025 15:34:53 | INFO | Performance vs | [MR_EW_DEMO15] 4.27% CAGR, -0.05 Sharpe | [BH_EW_DEMO15] 4.91% CAGR, 0.01 Sharpe | [BH_IWDA.AS] 9.46% CAGR, -0.02 Sharpe | [BH_CSPX.L] 6.26% CAGR, -0.14 Sharpe
-11-10-2025 15:34:53 | INFO | Output files saved to outputs/backtests/20251011-133451_87c9ac90
-```
-
-### Example Strategy vs. Benchmark Performance
-
-The chart below shows the cumulative equity curve of the strategy versus the configured benchmarks, normalized to 1.0 at the start date.
-
-![Strategy vs Benchmark Overlay](docs/images/overlay_demo15.png)
-
-Here, the prefix `BH` stands for *Buy-and-Hold*, `MR` for *Monthly Rebalance*, and `EW` for *Equal Weight*.
+Outputs mirror the synthetic run. An example overlay vs benchmarks can be found in `docs/images/overlay_demo15.png`.
 
 ---
 
-## The DEMO15 Universe
+## Strategies (brief)
 
-Since the free Alpha Vantage market data does not cover dividend- and split-adjusted prices, we are forced to manually avoid such tickers that pay dividends or had recent stock splits.
+- **BH (Buy‑and‑Hold), MR (Monthly Rebalance):** baselines.  
+- **ElasticNet Top‑N (walk‑forward):** cross‑sectional ML on monthly features.  
+  - **Label:** next‑month simple return from month‑end $t$ to $t{+}1$.  
+  - **Features:** momentum windows $[P,\text{skip}]$, realized volatility (currently $1\mathrm{m}$; parameterized variants coming).  
+  - **Selection:** rank scores, hold Top‑$N$, apply `cost_bps`.  
+  - **No look‑ahead:** train $<t$, predict at $t$, evaluate on $t{+}1$.
 
-The DEMO15 universe contains 15 liquid, non-dividend-paying stocks whose most recent split occurred in July 2015 (Netflix).
-With the Alpha Vantage free-tier limit of 25 calls per day, the universe plus two benchmarks can be maintained comfortably for experiments.
-
----
-
-## Outputs & Reproducibility
-
-Backtest runs are saved under `outputs/backtests/` where each run has a unique ID following the schema `YYYYMMDD-HHMMSS_<shortsha>`.
-
-Each run folder contains a `run_meta.json` file summarizing parameters, metrics, strategy and training information, ensuring full reproducibility.
-
-Further saved data typically includes the equity curve, the strategy metrics, and where applicable ticker selections and weights, as well as turnover information.
-
-If benchmarks were used for the backtest, there will also be a subfolder containing the benchmark equities as well as an `overlay.png` comparing the strategy against the benchmarks visually.
+<!-- For a minimal spec, see the README section in the repo or `docs/` as it evolves. -->
 
 ---
 
-## Dependencies & Setup
+## Insights (why this matters)
 
-Main libraries are defined in `pixi.toml` and include:
-| Library | Purpose |
-|----------|----------|
-| **numpy**, **pandas** | Core data handling and numerical operations |
-| **scikit-learn** | Machine learning models |
-| **matplotlib**, **seaborn** | Visualization and plotting |
-| **alpha_vantage** | Market data fetching via API |
-| **python-dotenv** | Load environment variables (API keys) |
-| **pyarrow** | Fast serialization (Parquet file support) |
-| **jupyter** | Interactive development and exploration |
-| **pixi**, **pip** | Environment and dependency management |
+Even in GBM worlds, the **mean vs median** split matters, diversification reduces risk like $\sim 1/\sqrt{N}$ when names are i.i.d., and **regime switches** can whipsaw naive strategies. The **Insights** notebooks run BH/MR/ENet across bull/bear and low/high‑vol regimes and discuss expected behavior.
 
-Install via:
-```bash
-pixi install
-pixi run dev-install
-```
+- Start: `notebooks/insights/01_gbm_regimes_overview.ipynb`  
+- Planned: `notebooks/insights/02_strategy_perf_by_regime.ipynb` (per‑regime KPIs)
+- Planned: `notebooks/insights/03_cross_regime_summary.ipynb` (side‑by‑side comparison)
 
 ---
 
-## Roadmap
+## Roadmap (theory → simulator → tests)
 
-- Expanding synthetic market data simulator for various scenarios and market cycles
-- Random Forest walk-forward trainer
-- Stress-testing and risk safeguards (e.g., exit-to-cash triggers, drawdown caps)
-- Visualizations and reporting enhancements
+- **Correlation:** one-factor $\rightarrow$ multi-factor $\rightarrow$ full correlation-matrix GBM.  
+- **Fat tails:** Student‑t innovations; tail quantile validation.  
+- **Skew:** skew‑t or downward jump‑diffusion.  
+- **Vol clustering:** simple two‑regime or stochastic volatility; leverage effect.  
+- **Signals with target IC:** synthetic cross‑sectional predictors with controllable IC.
+- **Stresstesting:** evaluate strategy robustness across regimes.
+- **Docs:** curated SVGs under `docs/images/` and concise write‑ups.
+
+---
+
+## Outputs & reproducibility
+
+Each run under `outputs/backtests/<run_id>/` includes:
+- `run_meta.json` (params, seed, TDY, simulator version, git commit, hash).  
+- Equity curves, metrics, selections/weights, overlays.  
+<!-- - Synthetic runs also record regime specs. -->
+
+Artifacts are deterministic under fixed seeds.
+
+---
+
+## Setup
+
+Key libraries: `numpy`, `pandas`, `scikit-learn`, `matplotlib`, `pyarrow`, `jupyter`, `python-dotenv`, `alpha_vantage`, managed via **Pixi**.  
+Install: `pixi install && pixi run dev-install`
 
 ---
 
 ## License
 
-MIT License - feel free to use and adapt with attribution.
+MIT — use and adapt with attribution.
 
 ---
 
 ## Author
 
-Kevin Klein
-
-LinkedIn: https://www.linkedin.com/in/kevin-klein-9a2342195/
-
+Kevin Klein  
+LinkedIn: https://www.linkedin.com/in/kevin-klein-9a2342195/  
 GitHub: https://github.com/ElPhysico/
