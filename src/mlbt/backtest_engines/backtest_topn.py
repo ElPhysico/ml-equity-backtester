@@ -129,7 +129,8 @@ def backtest_topn(
     rebal_dates = rebal_dates[1:-1]
 
     # topn map
-    topn_tbl = preds.groupby("month", observed=True).head(N)
+    topn_tbl = preds.groupby("month", observed=True, group_keys=False).apply(lambda g: g.nlargest(N, columns=rank_col))
+                                                                                                  
     counts = topn_tbl.groupby("month", observed=True).size()
     bad_months = counts[counts != N]
     if not bad_months.empty:
