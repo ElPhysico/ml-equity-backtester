@@ -54,6 +54,33 @@ def get_GBM_regimes(
 
     return GBM_REGIMES
 
+def notebook_single_GBM_graph(
+    mu: float = 0.05,
+    sigma: float = 0.2,
+    label: str = "Example GBM paths",
+    calendar: pd.DatetimeIndex = pd.bdate_range("2000-01-01", "2009-12-31", freq="B"),
+    n_tickers: int = 10,
+    tdy: int = 260,
+    seed: int = 1990
+) -> None:
+    cfg = {
+    "calendar": calendar,
+    "n_tickers": n_tickers,
+    "tdy": tdy,
+    "seed": seed
+    }
+    reg = {
+        "label": label,
+        "mu": mu,
+        "sigma": sigma
+    }
+    _ = visualize_gbm_regime(
+        **cfg,
+        regimes=[reg],
+        label=reg["label"],
+        # savepath=f"../../docs/images/gbm_regimes/{reg['label'].replace("- ", "").replace(" ", "_")}.png"
+    )
+
 def notebook_singular_GBM_graphs(
     regimes: dict[str, object] = GBM_REGIMES,
     calendar: pd.DatetimeIndex = pd.bdate_range("2000-01-01", "2009-12-31", freq="B"),
@@ -291,3 +318,133 @@ def visualize_gbm_regime(
 
 
     return plot_gbm_regime(norm, segments=segments, title=label, subtitle=subtitle, y_lim=y_lim, savepath=savepath)
+
+
+def plot_gbm_distributions(t: float,
+                           mu: float,
+                           sigma: float,
+                           S0: float = 1.0,
+                           n_samples: int = 100_000,
+                           bins_ln: int = 100,
+                           bins_S: int = 120,
+                           rng: np.random.Generator | None = None,
+                           title: str = "GBM terminal distributions at fixed t",
+                           subtitle: str = "",
+                           savepath: str | Path | None = None
+                           ) -> tuple[Figure, tuple[plt.Axes, plt.Axes]]:
+    """
+    Plot the distributions of ln S(t) and S(t) side-by-side for GBM:
+        S(t) = S0 * exp((mu - 0.5*sigma^2) * t + sigma * W_t),  W_t ~ N(0, t)
+
+    Left:  ln S(t) ~ Normal(m, v) with m = ln S0 + (mu - 0.5*sigma^2)t, v = sigma^2 t
+           Show histogram, theoretical normal PDF, and vertical lines at mean=median=mode=m.
+
+    Right: S(t) ~ Lognormal(m, v) with same (m, v) as above
+           Show histogram, theoretical lognormal PDF, and vertical lines at:
+               mean   = S0 * exp(mu * t)
+               median = S0 * exp((mu - 0.5*sigma^2) * t)
+               mode   = S0 * exp((mu - sigma**2) * t)
+
+    Parameters
+    ----------
+    t, mu, sigma : float
+        GBM parameters at the terminal time t.
+    S0 : float, default 1.0
+        Initial price / normalization.
+    n_samples : int, default 100_000
+        Number of Monte Carlo samples to draw for the histograms.
+    bins_ln : int, default 100
+        Histogram bins for ln S.
+    bins_S : int, default 120
+        Histogram bins for S.
+    rng : np.random.Generator | None
+        Optional RNG; if None, uses np.random.default_rng(42).
+    title, subtitle : str
+        Figure titles.
+    savepath : str | Path | None
+        If given, save the figure.
+
+    Returns
+    -------
+    fig, (ax_ln, ax_S)
+    """
+    if rng is None:
+        rng = np.random.default_rng(42)
+
+    # Theoretical parameters for ln S
+    m = np.log(S0) + (mu - 0.5 * sigma**2) * t
+    v = (sigma**2) * t
+    s = np.sqrt(v)
+
+    # Monte Carlo samples
+    Wt = rng.normal(loc=0.0, scale=np.sqrt(t), size=n_samples)
+    lnS = m + sigma * Wt  # = ln S(t)
+    S = np.exp(lnS)       # = S(t)
+
+    # Theoretical markers in S-space
+    S_mean   = S0 * np.exp(mu * t)
+    S_median = S0 * np.exp((mu - 0.5 * sigma**2) * t)
+    S_mode   = S0 * np.exp((mu - 1.5 * sigma**2) * t)
+
+    # Create figure
+    fig, (ax_ln, ax_S) = plt.subplots(1, 2, figsize=(12, 5))
+
+    # ---- Left: ln S(t) (Normal) ----
+    # Histogram (density)
+    ax_ln.hist(lnS, bins=bins_ln, density=True, alpha=0.35, edgecolor='none', label="MC histogram")
+
+    # Theoretical Normal PDF
+    # pdf(x) = (1/(s*sqrt(2π))) * exp(-0.5*((x-m)/s)^2)
+    x_ln = np.linspace(lnS.min(), lnS.max(), 800)
+    pdf_ln = (1.0 / (s * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((x_ln - m)/s)**2)
+    ax_ln.plot(x_ln, pdf_ln, linewidth=2.0, label="Normal PDF", alpha=0.5, linestyle="dashed")
+
+    # Mean/median/mode (all equal to m)
+    ax_ln.axvline(m, linestyle="--", linewidth=1.5, label="mean=median=mode")
+
+    ax_ln.set_title("Distribution of ln S(t)")
+    ax_ln.set_xlabel("ln S")
+    ax_ln.set_ylabel("Density")
+    ax_ln.legend(loc="best", frameon=True)
+
+    # ---- Right: S(t) (Lognormal) ----
+    # Histogram (density); avoid plotting extreme tail bins too wide by clipping max
+    # (Let numpy decide bins; we already pass bins_S)
+    ax_S.hist(S, bins=bins_S, density=True, alpha=0.35, edgecolor='none', label="MC histogram")
+
+    # Theoretical Lognormal PDF: for y>0, f(y) = (1/(y*s*sqrt(2π))) * exp(-0.5*((ln y - m)/s)^2)
+    y_min = max(1e-12, S.min())
+    y_max = np.quantile(S, 0.999) * 1.5  # extend a bit beyond 99.9% quantile for tail visibility
+    y = np.linspace(y_min, y_max, 1000)
+    pdf_S = (1.0 / (y * s * np.sqrt(2*np.pi))) * np.exp(-0.5 * ((np.log(y) - m)/s)**2)
+    ax_S.plot(y, pdf_S, linewidth=2.0, label="Lognormal PDF", alpha=0.5, linestyle="dashed")
+
+    # Mark mean, median, mode
+    ax_S.axvline(S_mean,   linestyle="-",  linewidth=1.5, label=f"mean = {S_mean:.3g}")
+    ax_S.axvline(S_median, linestyle="--", linewidth=1.5, label=f"median = {S_median:.3g}")
+    ax_S.axvline(S_mode,   linestyle=":",  linewidth=1.5, label=f"mode = {S_mode:.3g}")
+
+    ax_S.set_title("Distribution of S(t)")
+    ax_S.set_xlabel("S")
+    ax_S.set_ylabel("Density")
+    ax_S.set_xlim(left=0.0)  # S>=0
+    ax_S.legend(loc="best", frameon=True)
+
+    # ---- Figure titles / caption ----
+    fig.suptitle(title, fontsize=13, fontweight="bold", y=0.98)
+    if subtitle:
+        ax_ln.set_title(ax_ln.get_title() + f"\n{subtitle}", fontsize=10)
+        ax_S.set_title(ax_S.get_title() + f"\n{subtitle}", fontsize=10)
+
+    caption = (
+        "Left: ln S(t) ~ N(m, v) with m = ln S0 + (μ - ½σ²)t, v = σ²t (mean=median=mode).\n"
+        "Right: S(t) is lognormal — right-skewed. Vertical lines show mean, median, and mode."
+    )
+    fig.text(0.01, 0.01, caption, ha="left", va="bottom", fontsize=9, alpha=0.7)
+
+    fig.tight_layout(rect=[0, 0.03, 1, 0.97])
+
+    if savepath:
+        fig.savefig(savepath, dpi=160, bbox_inches="tight")
+
+    return fig, (ax_ln, ax_S)
