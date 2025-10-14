@@ -25,6 +25,7 @@ All input data should be pre-curated to exclude dividend effects or splits, or
 should use adjusted prices to ensure return consistency.
 """
 import pandas as pd
+import numpy as np
 import logging
 
 from mlbt.strategy_result import StrategyResult
@@ -125,8 +126,8 @@ def backtest_topn(
     s = pd.Series(px.index, index=px.index)
     rebal_dates = pd.DatetimeIndex(s.groupby(px.index.to_period('M')).last().values)
     t0 = rebal_dates[0]
-    # first is allocation day, last is strategy end day
-    rebal_dates = rebal_dates[1:-1]
+    # first is allocation day, last is strategy end day, remove at the end
+    rebal_dates = rebal_dates[1:]
 
     # topn map
     topn_tbl = preds.groupby("month", observed=True, group_keys=False).apply(lambda g: g.nlargest(N, columns=rank_col))
@@ -144,10 +145,10 @@ def backtest_topn(
     topn = topn_map[t0.to_period("M")]
     w = pd.Series(1.0 / len(topn), index=topn)
     
-    # we start at normalized equity 1.0
-    eq = 1.0
-    equity = [eq] # construct daily equity curve
-    charged_init = False # initial investment fee not charged yet
+    # setting containers
+    if name is None: # highly recommend passing a name for identification
+        name = f"{rank_col}_top{N}"
+    equity = pd.Series(np.nan, index=px.loc[t0:].index, name=name)
     weights_map: dict[pd.Timestamp, pd.Series] = {}
     turnover_items: dict[pd.Timestamp, float] = {}
     selections: dict[pd.Timestamp, list[str]] = {}
@@ -155,8 +156,7 @@ def backtest_topn(
     weights_map[t0] = w.copy()
     selections[t0] = topn.tolist().copy()
 
-    px_alloc = px.loc[t0:] # investment horizon
-    daily_rets = px_alloc.pct_change().iloc[1:] # first pct change is nan
+    daily_rets = px.pct_change().fillna(0.0)
 
     # check for unusual large number of nans
     row_month = daily_rets.index.to_period("M")
@@ -169,42 +169,39 @@ def backtest_topn(
             f"with >30% missing daily returns.\nPreview:\n{bad_preview}"
         )
 
-    # run backtest
-    for t in px_alloc.index[1:]:
-        # daily equity and weights update
-        r = daily_rets.loc[t, w.index].fillna(0.0)
-        R_t = float((w * r).sum())
-        eq *= (1.0 + R_t)
-        w = (w * (1.0 + r)) / (1.0 + R_t)
+    t_i = t0
+    equity.loc[t0] = 1.0 - cost_bps / 1e4
+    L = np.log1p(daily_rets).cumsum()
 
-        # rebalance dates
-        if t in rebal_dates:
+    for t in rebal_dates:
+        # equity evolution for block
+        t_ip1 = px[px.index > t_i].index[0]
+        G = np.exp(L.loc[t_i:t, w.index] - L.loc[t_i, w.index])
+        equity.loc[t_ip1:t] = equity[t_i] * (G * w).sum(axis=1).loc[t_ip1:]
+
+        # weights evolution and turnover
+        if t != rebal_dates[-1]: # catch strategy end day
             topn = topn_map[t.to_period("M")]
             w_new = pd.Series(1.0 / len(topn), index=topn)
             union = w.index.union(w_new.index)
+            w = G.loc[t] * w
+            w = w / w.sum()
             w_old_aligned = w.reindex(union).fillna(0.0).astype("float64")
             w_new_aligned = w_new.reindex(union).fillna(0.0).astype("float64")
             turnover = (w_new_aligned - w_old_aligned).abs().sum()
             cost_frac = (cost_bps / 1e4) * turnover
-            eq *= (1.0 - cost_frac)
+            equity.loc[t] *= (1.0 - cost_frac)
+
             w = w_new
-            
+            t_i = t
+
             # tracking
             weights_map[t] = w_new.copy()
             selections[t] = topn.tolist().copy()
             turnover_items[t] = turnover
-        
-        if not charged_init:
-            # the very first transaction cost is included in first day return
-            eq *= (1.0 - cost_bps / 1e4) # initial cost is always on the total notional
-            charged_init = True
+    equity[t0] = 1
 
-        equity.append(eq)
-    
-    if name is None: # highly recommend passing a name for identification
-        name = f"{rank_col}_top{N}"
-    eq = pd.Series(equity, index=px_alloc.index, name=name)
-
+    # accumulating data
     weights_df = (
         pd.DataFrame.from_dict(weights_map, orient="index")
         .sort_index()
@@ -229,8 +226,8 @@ def backtest_topn(
 
     res = StrategyResult(
         name=name,
-        equity=eq,
-        rebal_dates=rebal_dates,
+        equity=equity,
+        rebal_dates=rebal_dates[:-1],
         turnover=turnover_ser,
         entry_cost_frac=cost_bps / 1e4,
         selections=selections,
