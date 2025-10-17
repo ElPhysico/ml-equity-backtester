@@ -3,7 +3,7 @@
 Runs the ElasticNet Top-N strategy on the DEMO15 universe.
 """
 
-from mlbt.pipelines.demo15 import run_demo15_elasticnet_topn
+from mlbt.notebooks.demo15 import run_demo15_elasticnet_topn
 
 
 def main():

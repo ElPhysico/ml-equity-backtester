@@ -10,14 +10,13 @@ from mlbt.io import read_yaml
 from mlbt.utils import find_project_root, validate_config, bind_config,validate_px_wide_range
 from mlbt.log_utils import setup_logging
 
-from mlbt.universe import load_universe
+from mlbt.load_universe import load_universe
 from mlbt.load_prices import load_prices
 from mlbt.calendar import build_month_end_grid
 from mlbt.pipelines.ml_elasticnet_topn import run_elasticnet_topn_v0
-from mlbt.pipelines.demo_helpers import load_benchmarks, demo_additional_outputs
-from mlbt.strategy_result import StrategyResult
-from mlbt.visualisation import plot_equities
-from mlbt.pipelines.demo_validation import demo_validate_v0
+from mlbt.notebooks.demo_helpers import load_benchmarks, demo_additional_outputs
+from mlbt.specs.strategy_result import StrategyResult
+from mlbt.notebooks.demo_validation import demo_validate_v0
 
 PROJECT_ROOT = find_project_root()
 
@@ -74,14 +73,14 @@ def run_demo15_elasticnet_topn(
         raise ValueError(f"Ticker(s) {missing} not found.")
 
     # run pipeline
-    if "run_name" in cfg:
-        run_name = cfg["run_name"]
-        cfg.pop("run_name")
+    if "name" in cfg:
+        name = cfg["name"]
+        cfg.pop("name")
     res, meta = run_elasticnet_topn_v0(
         px_wide=px_wide,
         month_grid=me_grid,
         **cfg,
-        run_name= "ElasticNet_" + run_name 
+        name= "ElasticNet_" + name 
     )
 
     # load benchmarks if available
@@ -92,7 +91,7 @@ def run_demo15_elasticnet_topn(
         strat_start=strat_start,
         strat_end=strat_end,
         loaded_cfg=loaded_cfg,
-        run_name=run_name
+        name=name
     )
     
     # additional outputs
