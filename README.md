@@ -15,8 +15,10 @@ I started this project to learn workflows around **backtesting** and **machine l
 - **Notebooks:** 
   - Theory: derivations and intuition — see `notebooks/theory/`
     - Start here: [`01_gbm.ipynb`](notebooks/theory/01_gbm.ipynb)
-  - Insights: strategy behavior in different environments — see `notebooks/insights/`
-    - Start here: [`01_gbm_regimes_overview.ipynb`](notebooks/insights/01_gbm_regimes_overview.ipynb)
+  - Tutorials: learn how to use my framework for yourself - see `notebooks/tutorials/`
+    - Start here: [`01_simulating_universes.ipynb`](notebooks/tutorials/01_simulating_universes.ipynb)
+  <!-- - Insights: strategy behavior in different environments — see `notebooks/insights/`
+    - Start here: [`01_gbm_regimes_overview.ipynb`](notebooks/insights/01_gbm_regimes_overview.ipynb) -->
 
 ---
 
@@ -37,13 +39,14 @@ What it misses: fat tails, skew, volatility clustering, jumps, default.
 I progressively add those features (correlation, t‑tails, regime switches, etc.) so strategies can be stress‑tested beyond the Gaussian world.
 
 - **Singular regimes:** fixed $(\mu,\sigma)$ over time (e.g. Bull/Low‑Vol, Bear/High‑Vol).  
-- **Mixed regimes:** piecewise constant $(\mu,\sigma)$ with switch points to mimic cycles.
+- **Paradigm shifts:** piecewise constant $(\mu,\sigma)$ with switch points to mimic cycles.
+- **Mixed baskets:** combine different sub-baskets to a rich universe.
 
-See the visuals in `notebooks/insights/01_gbm_regimes_overview.ipynb`.
+<!-- See the visuals in `notebooks/insights/01_gbm_regimes_overview.ipynb`. -->
 
 ---
 
-## Quickstart — Synthetic data (no API key)
+## Quickstart — Demo backtest synthetic data (no API key)
 
 ```bash
 git clone https://github.com/ElPhysico/ml-equity-backtester.git
@@ -61,11 +64,9 @@ What it does:
 - Saves results to `outputs/backtests/<run_id>/` (including `run_meta.json`).
 - An example overlay vs benchmarks can be found in `docs/images/overlay_demo_synth.png`
 
-**Note on annualization:** metrics accept a configurable *trading‑days‑per‑year* (TDY). Use the same TDY you simulated with (e.g. 260 for business‑day calendars, or 252 for real‑market stats).
-
 ---
 
-## Quickstart — Real market data (Alpha Vantage)
+## Quickstart — Demo backtest real market data (Alpha Vantage)
 
 ```bash
 pixi install && pixi run dev-install
@@ -100,14 +101,15 @@ Outputs mirror the synthetic run. An example overlay vs benchmarks can be found 
 
 Even in GBM worlds, the **mean vs median** split matters, diversification reduces risk like $\sim 1/\sqrt{N}$ when names are i.i.d., and **regime switches** can whipsaw naive strategies. The **Insights** notebooks run BH/MR/ENet across bull/bear and low/high‑vol regimes and discuss expected behavior.
 
-- Start: `notebooks/insights/01_gbm_regimes_overview.ipynb`  
+<!-- - Start: `notebooks/insights/01_gbm_regimes_overview.ipynb`  
 - Planned: `notebooks/insights/02_strategy_perf_by_regime.ipynb` (per‑regime KPIs)
-- Planned: `notebooks/insights/03_cross_regime_summary.ipynb` (side‑by‑side comparison)
+- Planned: `notebooks/insights/03_cross_regime_summary.ipynb` (side‑by‑side comparison) -->
 
 ---
 
 ## Roadmap (theory → simulator → tests)
 
+- **Update Demo:** include statistical comparison between strategy and benchmarks.
 - **Correlation:** one-factor $\rightarrow$ multi-factor $\rightarrow$ full correlation-matrix GBM.  
 - **Fat tails:** Student‑t innovations; tail quantile validation.  
 - **Skew:** skew‑t or downward jump‑diffusion.  
