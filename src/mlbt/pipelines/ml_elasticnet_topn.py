@@ -1,13 +1,12 @@
 # src/mlbt/pipelines/ml_elasticnet_topn.py
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
-from mlbt.strategy_result import StrategyResult
+from mlbt.specs.strategy_result import StrategyResult
 from mlbt.utils import build_run_meta
 from mlbt.utils import validate_month_grid_index, validate_px_wide_index
 from mlbt.trainer import walkforward_elasticnet_v0
-from mlbt.backtest_engines import backtest_topn
+from mlbt.backtest_engines.backtest_topn import backtest_topn
 from mlbt.io import save_backtest_runs
 
 
@@ -15,14 +14,14 @@ def run_elasticnet_topn_v0(
     px_wide: pd.DataFrame,
     month_grid: pd.DataFrame,
     *,
-    feature_params: Optional[Dict] = None,
-    label_params: Optional[Dict] = None,
-    model_params: Optional[Dict] = None,
-    backtest_params: Optional[Dict] = None,
-    run_name: Optional[str] = None,
+    feature_params: dict[str, object] | None = None,
+    label_params: dict[str, object] | None = None,
+    model_params: dict[str, object] | None = None,
+    backtest_params: dict[str, object] | None = None,
+    name: dict[str, object] | None = None,
     save: bool = False,
-    out_dir: Optional[Path] = None
-) -> Tuple["StrategyResult", Dict]:
+    out_dir: dict[str, object] | None = None
+) -> tuple[StrategyResult, dict]:
     """
     Orchestrate a Top-N backtest from walkforward_elasticnet_v0.
 
@@ -51,7 +50,7 @@ def run_elasticnet_topn_v0(
     backtest_params : dict, optional
         Parameters for the backtesting engine, e.g. {"rank_col": y_pred", "N": 10, "cost_bps": 4.0, "strict": True}.
 
-    run_name : str, optional
+    name : str, optional
         Friendly label appearing in saved metadata and filenames.
 
     save : bool, default=False
@@ -69,7 +68,7 @@ def run_elasticnet_topn_v0(
     """
     # some guards
     validate_px_wide_index(px_wide)
-    validate_month_grid_index(month_grid)
+    # validate_month_grid_index(month_grid)
 
     # create predictions
     feature_params = {} if feature_params is None else feature_params
@@ -87,11 +86,11 @@ def run_elasticnet_topn_v0(
 
     # run top-n backtest
     backtest_params = {} if backtest_params is None else backtest_params
-    res, backtest_params = backtest_topn(
+    res, bt_params = backtest_topn(
         px_wide=px_wide,
         predictions=preds,
         **backtest_params,
-        name=run_name
+        name=name
     )
 
     # compute metrics
@@ -104,8 +103,8 @@ def run_elasticnet_topn_v0(
     run_meta = build_run_meta(
         predictions=preds,
         res=res,
-        run_name=run_name,
-        backtest_params=backtest_params,
+        name=name,
+        backtest_params=bt_params,
         runner_name="elasticnet_topn",
         runner_version="v0",
         predictions_meta=pred_meta,

@@ -1,10 +1,9 @@
 # src/mlbt/pipelines/topn_runner.py
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
-from mlbt.strategy_result import StrategyResult
-from mlbt.backtest_engines import backtest_topn
+from mlbt.specs.strategy_result import StrategyResult
+from mlbt.backtest_engines.backtest_topn import backtest_topn
 from mlbt.utils import build_run_meta
 from mlbt.utils import validate_month_grid_index
 from mlbt.io import save_backtest_runs
@@ -14,11 +13,11 @@ def run_topn_from_predictions(
     px_wide: pd.DataFrame,
     predictions: pd.DataFrame,
     *,
-    backtest_params: Optional[Dict] = None,
-    run_name: Optional[str] = None,
+    backtest_params: dict[str, object] | None = None,
+    name: str | None = None,
     save: bool = True,
-    out_dir: Optional[Path] = None
-) -> Tuple["StrategyResult", Dict]:
+    out_dir: Path | None = None
+) -> tuple[StrategyResult, dict]:
     """
     Orchestrate a Top-N backtest from a precomputed predictions/signal table.
 
@@ -37,7 +36,7 @@ def run_topn_from_predictions(
     backtest_params : dict, optional
         Parameters for the backtesting engine, e.g. {"rank_col": y_pred", "N": 10, "cost_bps": 4.0, "strict": True}.
 
-    run_name : str, optional
+    name : str, optional
         Friendly label that will be included in saved metadata and filenames.
 
     save : bool, default=True
@@ -58,11 +57,11 @@ def run_topn_from_predictions(
     
     # run actual topn backtest
     backtest_params = {} if backtest_params is None else backtest_params
-    res, backtest_params = backtest_topn(
+    res, bt_params = backtest_topn(
         px_wide=px_wide,
         predictions=predictions,
         **backtest_params,
-        name=run_name
+        name=name
     )
 
     # compute metrics
@@ -75,8 +74,8 @@ def run_topn_from_predictions(
     run_meta = build_run_meta(
         predictions=predictions,
         res=res,
-        run_name=run_name,
-        backtest_params=backtest_params,
+        name=name,
+        backtest_params=bt_params,
         runner_name="topn_from_predictions",
         runner_version=None,
         metrics=m if isinstance(m, dict) else None,
