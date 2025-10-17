@@ -5,19 +5,18 @@ Buy-and-hold equity backtester.
 This module provides a lightweight backtesting engine for strategies that buy and hold selected tickers over the full investment period. A one time, one-way allocation cost is applied to the returns from day 1 to day 2.
 """
 import pandas as pd
-from typing import Optional, Dict, Tuple
 import math
 
-from mlbt.strategy_result import StrategyResult
+from mlbt.specs.strategy_result import StrategyResult
 
 
 def backtest_bh(
     px_wide: pd.DataFrame,
     *,
-    weights: Optional[Dict[str, float]] = None,
+    weights: dict[str, float] | None = None,
     cost_bps: float = 5.0,
-    name: Optional[str] = None
-) -> Tuple[StrategyResult, Dict]:
+    name: str | None = None
+) -> tuple[StrategyResult, dict]:
     first = px_wide.dropna(axis=1, how="all").iloc[0:1]
     t0 = first.index[0]
     tickers = first.columns[first.notna().iloc[0]]
@@ -65,8 +64,10 @@ def backtest_bh(
     weights_df.columns.name = "ticker"
 
     selections = {t0: tickers}
+    nz_idx = w0.index[w0.abs().gt(1e-12)]
+    selections = {t0: nz_idx.tolist()}
 
-    turnover_items: Dict[pd.Timestamp, float] = {}
+    turnover_items: dict[pd.Timestamp, float] = {}
     turnover_ser = (
         pd.Series(turnover_items, name="turnover")
         .sort_index()

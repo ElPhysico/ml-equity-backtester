@@ -1,4 +1,4 @@
-# src/mlbt/backtest_topn.py
+# src/mlbt/backtest_engines/backtest_topn.py
 """
 Top-N equity selection backtester.
 
@@ -28,8 +28,7 @@ import pandas as pd
 import numpy as np
 import logging
 
-from mlbt.strategy_result import StrategyResult
-from mlbt.load_prices import flag_suspect_splits
+from mlbt.specs.strategy_result import StrategyResult
 from mlbt.utils import validate_columns_exist
 
 
@@ -100,10 +99,7 @@ def backtest_topn(
     # some guards
     validate_columns_exist(predictions, rank_col)
 
-    # check for potential stocksplits
-    flag_suspect_splits(px_wide)
-
-    # aligning calendars
+    # aligning calendars -> not intensive
     m1 = predictions.index.get_level_values("month").sort_values()
     m1 = m1.append(pd.PeriodIndex([m1[-1] + 1])) # we predict for next month
     m2 = px_wide.index.to_period("M")
@@ -131,7 +127,8 @@ def backtest_topn(
 
     # topn map
     topn_tbl = preds.groupby("month", observed=True, group_keys=False).apply(lambda g: g.nlargest(N, columns=rank_col))
-                                                                                                  
+    
+    # check for months with not enough tickers -> a bit intensive      
     counts = topn_tbl.groupby("month", observed=True).size()
     bad_months = counts[counts != N]
     if not bad_months.empty:
@@ -139,6 +136,7 @@ def backtest_topn(
             f"{len(bad_months)} months do not have exactly N={N} tickers, "
             f"examples:\n{bad_months.head(3)}"
         )
+    
     topn_map: dict[pd.Period, pd.Index] = topn_tbl.reset_index().groupby("month", observed=True)["ticker"].apply(pd.Index).to_dict()
     
     # initial portfolio allocation on first rebalance date
@@ -158,7 +156,7 @@ def backtest_topn(
 
     daily_rets = px.pct_change().fillna(0.0)
 
-    # check for unusual large number of nans
+    # check for unusual large number of nans -> not intensive
     row_month = daily_rets.index.to_period("M")
     nan_share_df = daily_rets.isna().groupby(row_month).mean()
     bad_mask = nan_share_df > 0.3
@@ -175,7 +173,7 @@ def backtest_topn(
 
     for t in rebal_dates:
         # equity evolution for block
-        t_ip1 = px[px.index > t_i].index[0]
+        t_ip1 = px[px.index > t_i].index[0] # finding trading day after first day of period bc first day of period is the same as last day of last period
         G = np.exp(L.loc[t_i:t, w.index] - L.loc[t_i, w.index])
         equity.loc[t_ip1:t] = equity[t_i] * (G * w).sum(axis=1).loc[t_ip1:]
 
