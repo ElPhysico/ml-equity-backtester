@@ -97,6 +97,7 @@ def run_full_pipeline(
             )
             pxs.append(px)
         px_universe = pd.concat(pxs, axis=1)
+
         # correlation
         corr_matrix = px_universe.pct_change().corr().values
         mask = ~np.eye(corr_matrix.shape[0], dtype=bool)
@@ -106,7 +107,8 @@ def run_full_pipeline(
             logging.warning(f"[run {run_idx}] mean pairwise corr is {corr[-1]:.4f} (|rho|>0.02)")
 
         if initial_run:
-            me_grid = build_month_end_grid(px)      
+            me_grid = build_month_end_grid(px_universe)      
+
 
         # logic to run strategies
         for k, s in strategy_registry.items():
@@ -126,7 +128,7 @@ def run_full_pipeline(
                 logging.warning(f"Strategies have different starting dates, benchmarks will be run over last strategy's horizon.")
             if strat_end != meta["strategy"]["strategy_end"]:
                 logging.warning(f"Strategies have different ending dates, benchmarks will be run over last strategy's horizon.")
-            px_strat = px[(px.index >= strat_start) & (px.index <= strat_end)]
+            px_strat = px_universe[(px_universe.index >= strat_start) & (px_universe.index <= strat_end)]
 
             # selection data
             d = res.selections
@@ -136,7 +138,7 @@ def run_full_pipeline(
                 "n_changes": len(changed),
                 "last_change": changed[-1] if changed else None,
                 "coef_last_month": meta["predictions_meta"]["coef_last_month"],
-                # "selections": d
+                "selections": d
             })
 
             # collecting data
