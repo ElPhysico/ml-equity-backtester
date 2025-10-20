@@ -9,13 +9,39 @@ schedules. Functions return canonical grids that downstream components
 duplication and alignment errors.
 """
 import pandas as pd
+import logging
+
+from typing import Literal
+
+Freq = Literal["D", "B", "W", "M"]
+N_MAP: dict[Freq, int] = {"D": 252, "B": 261, "W": 52, "M": 12}
+
+
+def years_spanned(idx: pd.DatetimeIndex) -> float:
+    return float((idx[-1] - idx[0]) / pd.Timedelta(days=365.25))
+
+def freq_from_datetimeindex(idx: pd.DatetimeIndex) -> str:
+    freq = idx.freqstr
+    if freq is None:
+        freq = pd.infer_freq(idx)
+    if freq is None:
+        logging.warning(f"Couldn't infer Datetimeindex period, using 'D'.")
+        freq = "D"
+    return freq
+
+def ann_factor(freq: Freq, overwrite: int | None = None) -> int:
+    return N_MAP[freq] if overwrite is None else overwrite
+
+def tdy_from_index(idx: pd.DatetimeIndex) -> int:
+    f = freq_from_datetimeindex(idx)
+    return ann_factor(f, overwrite=None)
 
 
 def build_month_end_grid(
     px_wide: pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Construct a canonical (month, ticker) grid of effective month-end trading dates and closes.
+    Construct a canonical (month, ticker) grid of effective month-end trading dates and closes. This function becomes heavy for large universes.
 
     Parameters
     ----------
@@ -32,6 +58,7 @@ def build_month_end_grid(
         - px_M : float
             Close on trade_dt_M.
     """
+    logging.warning("Building month grid (remove this warning at some point, currently warns because we do not want to build month grid unnecessary)")
     # sorting index
     px_wide = px_wide.sort_index()
 

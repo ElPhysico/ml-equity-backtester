@@ -5,19 +5,20 @@ This module contains the demo runner using synthetic maret data.
 import logging
 from pathlib import Path
 import pandas as pd
+import numpy as np
 
 from mlbt.log_utils import setup_logging
 from mlbt.utils import find_project_root, validate_config, bind_config, validate_px_wide_range
 from mlbt.io import read_yaml
 
-from mlbt.simulator.trajectories import simulate_gbm_trajectories
+from mlbt.simulator.simulators import simulate_gbm_trajectories
 from mlbt.simulator.validaton import validate_gbm_scaling_and_drift
 
 from mlbt.pipelines.ml_elasticnet_topn import run_elasticnet_topn_v0
-from mlbt.pipelines.demo_validation import demo_validate_v0
-from mlbt.pipelines.demo_helpers import load_benchmarks, demo_additional_outputs
+from mlbt.notebooks.demo_validation import demo_validate_v0
+from mlbt.notebooks.demo_helpers import load_benchmarks, demo_additional_outputs
 from mlbt.calendar import build_month_end_grid
-from mlbt.strategy_result import StrategyResult
+from mlbt.specs.strategy_result import StrategyResult
 
 PROJECT_ROOT = find_project_root()
 
@@ -47,9 +48,11 @@ def run_demo_synth_elasticnet_topn(
     calendar = pd.bdate_range(start, end, freq="B")
 
     # seed
-    sim_kwargs = {}
     if "seed" in loaded_cfg["simulator_params"]:
-        sim_kwargs["seed"] = int(loaded_cfg["simulator_params"]["seed"])
+        # sim_kwargs["seed"] = int(loaded_cfg["simulator_params"]["seed"])
+        rng = np.random.default_rng(int(loaded_cfg["simulator_params"]["seed"]))
+    else:
+        rng = None
 
     # load optional parameters and safeguard
     cfg = bind_config(run_elasticnet_topn_v0, loaded_cfg)
@@ -68,29 +71,26 @@ def run_demo_synth_elasticnet_topn(
             gbm_cfg["n_tickers"] = int(gbm_cfg["n_tickers"])
         if "n_tickers" in gbm_cfg and gbm_cfg["n_tickers"] < 1:
             raise ValueError(f"'n_tickers' needs to be > 0, is {gbm_cfg['n_tickers']}")
-        if "ann_mu" in gbm_cfg:
-            gbm_cfg["ann_mu"] = float(gbm_cfg["ann_mu"])
-        if "ann_sigma" in gbm_cfg:
-            gbm_cfg["ann_sigma"] = float(gbm_cfg["ann_sigma"])
-        if "ann_sigma" in gbm_cfg and gbm_cfg["ann_sigma"] < 0:
-            raise ValueError(f"'ann_sigma' needs to be >= 0, is {gbm_cfg['ann_sigma']}")
-        if "tdy" in gbm_cfg:
-            gbm_cfg["tdy"] = int(gbm_cfg["tdy"])
-        if "tdy" in gbm_cfg and gbm_cfg["tdy"] < 0:
-            raise ValueError(f"'tdy' needs to be >= 0, is {gbm_cfg['tdy']}")
+        if "mu" in gbm_cfg:
+            gbm_cfg["mu"] = float(gbm_cfg["mu"])
+        if "sigma" in gbm_cfg:
+            gbm_cfg["sigma"] = float(gbm_cfg["sigma"])
+        if "sigma" in gbm_cfg and gbm_cfg["sigma"] < 0:
+            raise ValueError(f"'sigma' needs to be >= 0, is {gbm_cfg['sigma']}")
         
         gbm_px, gbm_meta = simulate_gbm_trajectories(
             calendar=calendar,
             **gbm_cfg,
-            **sim_kwargs
+            rng=rng
         )
         report = validate_gbm_scaling_and_drift(
             px_wide=gbm_px,
-            ann_mu=gbm_meta["params"]["ann_mu"],
-            ann_sigma=gbm_meta["params"]["ann_sigma"]
+            mu=gbm_meta["params"]["mu"][0],
+            sigma=gbm_meta["params"]["sigma"][0]
         )
         if not all(report["pass"].values()):
             logging.warning(f"GBM universe didn't pass check: {report['pass']}")
+            print(report)
         
         universes.append(gbm_px)
         universe_metas["gbm"] = gbm_meta
@@ -105,14 +105,14 @@ def run_demo_synth_elasticnet_topn(
     validate_px_wide_range(px_wide, start, end)
 
     # run pipeline
-    if "run_name" in cfg:
-        run_name = cfg["run_name"]
-        cfg.pop("run_name")
+    if "name" in cfg:
+        name = cfg["name"]
+        cfg.pop("name")
     res, meta = run_elasticnet_topn_v0(
         px_wide=px_wide,
         month_grid=me_grid,
         **cfg,
-        run_name= "ElasticNet_" + run_name 
+        name= "ElasticNet_" + name 
     )
 
     # load benchmarks if available
@@ -123,7 +123,7 @@ def run_demo_synth_elasticnet_topn(
         strat_start=strat_start,
         strat_end=strat_end,
         loaded_cfg=loaded_cfg,
-        run_name=run_name
+        name=name
     )
 
     # adding any potential universe creation parameters to metadata
@@ -131,7 +131,7 @@ def run_demo_synth_elasticnet_topn(
         meta["universe_simulations"] = universe_metas
 
     # additional outputs
-    demo_additional_outputs(
+    meta = demo_additional_outputs(
         cfg=cfg,
         res=res,
         meta=meta,

@@ -17,6 +17,8 @@ Functions follow a common pattern:
 import pandas as pd
 import numpy as np
 
+from mlbt.calendar import freq_from_datetimeindex, N_MAP
+
 
 def mom_P_skip_log_1m(
     features: pd.DataFrame,
@@ -110,7 +112,11 @@ def vol_1m(
 
     # safely joining vol into features
     if annualize:
-        std = std * np.sqrt(252)
+        # if we can't infer tdy from calendar we use the value for D
+        freq = freq_from_datetimeindex(px_wide.index)
+        if freq not in ["D", "B"]:
+            freq = "D"
+        std = std * N_MAP[freq]
         features = features.join(std.to_frame("ann_vol_1m"), how="left")
     else:
         features = features.join(std.to_frame("vol_1m"), how="left")

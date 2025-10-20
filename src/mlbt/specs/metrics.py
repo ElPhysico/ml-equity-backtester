@@ -1,40 +1,40 @@
-# src/mlbt/metrics.py
+# src/mlbt/specs/metrics.py
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, asdict
-from typing import Literal, Optional
 
-from mlbt.strategy_result import StrategyResult
-
-Freq = Literal["D", "W", "M"]
-
-# Annualization factors: daily=252, weekly=52, monthly=12
-_N_MAP: dict[Freq, int] = {"D": 252, "W": 52, "M": 12}
+from mlbt.specs.strategy_result import StrategyResult
+from mlbt.calendar import Freq, years_spanned, freq_from_datetimeindex, ann_factor
 
 
 @dataclass(frozen=True)
 class MetricsResult:
     total_return: float
-    cagr: float
+    cagr: float             # = geometric mean
+    arithmetic_mean: float
     vol_ann: float
     sharpe: float
     max_drawdown: float
+    freq: Freq
+    ppy: float              # periods per year
+    ann_turnover: float | None = None # added when calling StrategyResult.compute_metrics()
 
     def to_dict(self) -> dict:
         return asdict(self)
 
-    def to_series(self, name: Optional[str] = None):
+    def to_series(self, name: str | None = None):
         s = pd.Series(asdict(self))
         if name is not None:
             s.name = name
         return s
     
     def to_string(self) -> str:
-        s = f"TR: {100*self.total_return:.2f}%"
+        s = f"TR: {self.total_return:.2%}"
         s += f" | Sharpe: {self.sharpe:.2f}"
-        s += f" | CAGR: {100*self.cagr:.2f}%"
-        s += f" | MaxDD: {100*self.max_drawdown:.2f}%"
-        s += f" | Ann. Vol: {100*self.vol_ann:.2f}%"
+        s += f" | CAGR: {self.cagr:.2%}"
+        s += f" | Arithmetic mean: {self.arithmetic_mean:.2%}"
+        s += f" | MaxDD: {self.max_drawdown:.2%}"
+        s += f" | Ann. Vol: {self.vol_ann:.2%}"
         return s
 
 
@@ -62,7 +62,6 @@ def _validate_index(s: pd.Series) -> pd.Series:
 
     return out
 
-
 def _as_returns_from_equity(equity: pd.Series) -> pd.Series:
     eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
     return eq.pct_change().dropna()
@@ -71,16 +70,10 @@ def _as_equity_from_returns(returns: pd.Series) -> pd.Series:
     ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
     return (1.0 + ret).cumprod()
 
-def _years_spanned(idx: pd.DatetimeIndex) -> float:
-    return float((idx[-1] - idx[0]) / pd.Timedelta(days=365.25))
-
-def _ann_factor(freq: Freq) -> int:
-    return _N_MAP[freq]
-
 def _to_periodic_returns(daily_returns: pd.Series, freq: Freq) -> pd.Series:
     ret = _validate_index(daily_returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
 
-    if freq == "D":
+    if freq == "D" or freq == "B":
         return ret
 
     # geometric link within each period: (1+r).prod() - 1
@@ -93,14 +86,14 @@ def _to_periodic_returns(daily_returns: pd.Series, freq: Freq) -> pd.Series:
         # Month-end bars (non-overlapping)
         return gross.resample("ME").prod().dropna() - 1.0
     else:
-        raise ValueError(f"Unsupported freq '{freq}'. Use 'D', 'W', or 'M'.")
+        raise ValueError(f"Unsupported freq '{freq}'. Use 'D', 'B', 'W', or 'M'.")
 
 
 # ---------------- Public metric primitives ----------------
 
 def total_return(
-    equity: Optional[pd.Series] = None,
-    returns: Optional[pd.Series] = None
+    equity: pd.Series | None = None,
+    returns: pd.Series | None = None
 ) -> float:
     if returns is not None:
         ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
@@ -112,36 +105,55 @@ def total_return(
         raise ValueError("Either equity or returns are required to compute total return.")
     
 def cagr(
-    equity: Optional[pd.Series] = None,
-    returns: Optional[pd.Series] = None
+    equity: pd.Series | None = None,
+    returns: pd.Series | None = None
 ) -> float:
     tr = total_return(equity, returns)
     if returns is not None:
         ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
-        y = _years_spanned(ret.index)
+        y = years_spanned(ret.index)
     elif equity is not None:
         eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
-        y =_years_spanned(eq.index)
+        y = years_spanned(eq.index)
     else:
         raise ValueError("Either equity or returns are required to compute CAGR.")
     return float((1 + tr) ** (1/y) - 1.0)
 
+def arithmetic_mean(
+    equity: pd.Series | None = None,
+    returns: pd.Series | None = None,
+    freq: Freq = "D",
+    overwrite: int | None = None # use to overwrite ann_factor/periods per year
+) -> float:
+    if returns is not None:
+        ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
+    elif equity is not None:
+        eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
+        ret = eq.pct_change().dropna()
+    else:
+        raise ValueError("Either equity or returns are required to compute arithmetic mean.")
+    mean_ret = ret.mean()
+    N = ann_factor(freq, overwrite)
+    return float(mean_ret * N)    
+
 def vol_annualized(
     returns: pd.Series,
     freq: Freq = "D",
+    overwrite: int | None = None, # use to overwrite ann_factor/periods per year
     ddof: int = 0
 ) -> float:
     ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
-    N = _ann_factor(freq)
+    N = ann_factor(freq, overwrite)
     return float(ret.std(ddof=ddof) * N**(1/2))
 
 def sharpe(
     returns: pd.Series,
     freq: Freq = "D",
+    overwrite: int | None = None, # use to overwrite ann_factor/periods per year
     rf_ann: float = 0.0,
 ) -> float:
     ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
-    N = _ann_factor(freq)
+    N = ann_factor(freq, overwrite)
     rf_periodic = (1 + rf_ann)**(1/N) - 1
     mean_excess_ann = (ret.mean() - rf_periodic) * N
     vol_ann = vol_annualized(ret, freq)
@@ -149,8 +161,8 @@ def sharpe(
     return float(sharpe)
     
 def max_drawdown(
-    equity: Optional[pd.Series] = None,
-    returns: Optional[pd.Series] = None,
+    equity: pd.Series | None = None,
+    returns: pd.Series | None = None,
 ) -> float:
     if equity is not None:
         eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
@@ -169,9 +181,10 @@ def max_drawdown(
 # ---------------- Orchestrator ----------------
 
 def compute_metrics(
-    equity: Optional[pd.Series] = None,
-    returns: Optional[pd.Series] = None,
-    freq: Freq = "D",
+    equity: pd.Series | StrategyResult | None = None,
+    returns: pd.Series | None = None,
+    # freq: Freq = "D",
+    overwrite: int | None = None, # use to overwrite ann_factor/periods per year
     rf_ann: float = 0
 ) -> None:
     """
@@ -180,30 +193,39 @@ def compute_metrics(
     If a StrategyResult object is provided instead of a Series, its
     `.equity` attribute is used automatically.
     """
+    from_sr = {}
     if isinstance(equity, StrategyResult):
+        from_sr["ann_turnover"] = equity.ann_turnover
         equity = equity.equity
         
     eq, ret = None, None
     if returns is not None:
         ret = _validate_index(returns).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
+        freq = freq_from_datetimeindex(ret.index)
     elif equity is not None:
         eq = _validate_index(equity).astype("float64").replace([np.inf, -np.inf], np.nan).dropna()
+        freq = freq_from_datetimeindex(eq.index)
     else:
         raise ValueError("Either equity or returns are required to compute metrics.")
+    
     
     if ret is not None:
         ret_for_vol = _to_periodic_returns(ret, freq)
     else:
         daily_ret = _as_returns_from_equity(eq)
         ret_for_vol = _to_periodic_returns(daily_ret, freq)
-    vol_ann = vol_annualized(ret_for_vol, freq)
+    vol_ann = vol_annualized(ret_for_vol, freq, overwrite)
 
     metrics = MetricsResult(
         total_return=total_return(eq, ret),
         cagr=cagr(eq, ret),
+        arithmetic_mean=arithmetic_mean(eq, ret, freq, overwrite),
         vol_ann=vol_ann,
-        sharpe=sharpe(ret_for_vol, freq, rf_ann),
-        max_drawdown=max_drawdown(eq, ret)
+        sharpe=sharpe(ret_for_vol, freq, overwrite, rf_ann),
+        max_drawdown=max_drawdown(eq, ret),
+        freq=freq,
+        ppy=ann_factor(freq, overwrite),
+        **from_sr
     )
 
     return metrics

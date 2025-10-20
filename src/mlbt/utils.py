@@ -364,7 +364,7 @@ def build_run_meta(
     predictions: pd.DataFrame,
     res: Any,
     *,
-    run_name: Optional[str],
+    name: Optional[str],
     backtest_params: Dict[str, Any],
     runner_name: str,
     runner_version: Optional[str] = None,
@@ -381,7 +381,7 @@ def build_run_meta(
         MultiIndex (month, ticker) table used to infer coverage and universe summary.
     res : Any
         StrategyResult-like object with `.rebal_dates` and `.name`; adds brief strategy info.
-    run_name : str, optional
+    name : str, optional
         Friendly label chosen by the user (appears in logs and filenames).
     backtest_params : dict
         Parameters governing the backtest (e.g., rank_col, N, cost_bps, strict, model_cfg, etc.).
@@ -422,7 +422,7 @@ def build_run_meta(
     meta: Dict[str, Any] = {
         "created_at": utc_now_iso(),
         "runner": {"name": runner_name, "version": "-" if runner_version is None else runner_version},
-        "run_name": run_name,
+        "name": name,
         "data_coverage": {"start": start_month, "end": end_month},
         "universe": univ,
         "backtest_params": backtest_params,

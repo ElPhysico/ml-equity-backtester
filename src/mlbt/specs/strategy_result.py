@@ -1,4 +1,4 @@
-# src/mlbt/result.py
+# src/mlbt/specs/result.py
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Dict, List
@@ -227,5 +227,5 @@ class StrategyResult:
             assert isinstance(self.rebal_dates, pd.DatetimeIndex), "rebal_dates must be a DatetimeIndex"
 
     def compute_metrics(self, **kwargs):
-        from mlbt.metrics import compute_metrics
+        from mlbt.specs.metrics import compute_metrics        
         return compute_metrics(self, **kwargs)

@@ -5,6 +5,8 @@ Validation tools for the simulator framework.
 import numpy as np
 import pandas as pd
 
+from mlbt.calendar import tdy_from_index
+
 def _check_basic_sanity(px_wide: pd.DataFrame) -> None:
     # No NaNs / infs
     assert px_wide.to_numpy().dtype.kind == 'f' or px_wide.to_numpy().dtype.kind == 'i'
@@ -20,9 +22,8 @@ def _daily_log_returns(px_wide: pd.DataFrame) -> pd.DataFrame:
 
 def validate_gbm_scaling_and_drift(
     px_wide: pd.DataFrame,
-    ann_mu: float,
-    ann_sigma: float,
-    trading_days_per_year: int = 252,
+    mu: float,
+    sigma: float,
     *,
     mean_tol_std_errors: float = 4.0,
     std_tol_rel: float = 0.05,
@@ -34,12 +35,10 @@ def validate_gbm_scaling_and_drift(
     ----------
     px_wide : DataFrame
         Prices [dates x tickers], strictly positive.
-    ann_mu : float
+    mu : float
         Annualized drift used in the simulator.
-    ann_sigma : float
+    sigma : float
         Annualized volatility used in the simulator.
-    trading_days_per_year : int
-        E.g., 252.
     mean_tol_std_errors : float
         Tolerance for mean drift in units of standard errors of the mean (SEM).
     std_tol_rel : float
@@ -55,9 +54,11 @@ def validate_gbm_scaling_and_drift(
     r = _daily_log_returns(px_wide)  # shape [T-1, N]
     T, N = r.shape
 
+    trading_days_per_year = tdy_from_index(px_wide.index)
+
     # Targets under GBM
-    mu_step = (ann_mu - 0.5 * ann_sigma**2) / trading_days_per_year
-    sigma_step = float(ann_sigma / np.sqrt(trading_days_per_year))
+    mu_step = (mu - 0.5 * sigma**2) / trading_days_per_year
+    sigma_step = float(sigma / np.sqrt(trading_days_per_year))
 
     # Empiricals (pool across all tickers & days)
     r_vals = r.to_numpy().ravel()
@@ -78,6 +79,7 @@ def validate_gbm_scaling_and_drift(
     report = {
         "n_days": T,
         "n_tickers": N,
+        "input": {"mu": mu, "sigma": sigma},
         "target": {"mu_step": mu_step, "sigma_step": sigma_step},
         "empirical": {"mean_all": mean_emp, "std_all": std_emp, "sem": sem},
         "per_ticker": {

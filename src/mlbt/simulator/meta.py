@@ -12,14 +12,14 @@ def build_trajectories_meta(
     n_tickers: int,
     calendar: pd.DatetimeIndex,
     params: dict[str, Any],
-    seed: int
+    rng: dict[str, Any]
 ) -> dict[str, Any]:
     meta = {
         "n_tickers": n_tickers,
         "start": calendar[0].strftime("%Y-%m-%d"),
         "end": calendar[-1].strftime("%Y-%m-%d"),
         "params": params,
-        "seed": seed
+        "rng": rng
     }
     meta_hash = sha1_of_str(json.dumps(meta, sort_keys=True))
     meta["hash"] = meta_hash

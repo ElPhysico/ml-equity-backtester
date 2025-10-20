@@ -29,7 +29,7 @@ import json
 from typing import Optional, List
 
 from mlbt.log_utils import setup_logging
-from mlbt.universe import load_universe
+from mlbt.load_universe import load_universe
 from mlbt.api_key import get_api_key
 
 
