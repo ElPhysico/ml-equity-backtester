@@ -5,18 +5,13 @@ This module holds a full pipeline for creating GBM universes, evaluating strateg
 import numpy as np
 import pandas as pd
 import logging
-import scipy.stats as st
-
-from matplotlib.figure import Figure
 
 from mlbt.specs.universe_spec import UniverseSpec
 from mlbt.specs.strategy_spec import StrategySpec
 from mlbt.calendar import build_month_end_grid, years_spanned
 from mlbt.simulator.simulators import simulate_universe
 from mlbt.analysis.strategy_analysis import statistics_ann_log_growth, average_metricsresults
-from mlbt.outputs import cli_ann_log_growth_stats, md_ann_log_growth_stats, md_ann_log_growth_stats_table
 from mlbt.log_utils import setup_logging
-from mlbt.visualisation import plot_equities, plot_ann_log_growth_statistics
 
 from mlbt.statistics.welford_aggregator import Welford
 
@@ -67,6 +62,7 @@ def run_full_pipeline(
         Dictionary containing the investment horizon in years, the geometric mean equity curve as tuple containing (curve, lower band, upper band), the mean metrics dataframe, the delta log growth dataframe, and a delta log growth statistics dataframe.
     """
     setup_logging(verbose=verbose)
+
     # initialize RNG
     ss_master = np.random.SeedSequence(master_seed)
     run_seqs = ss_master.spawn(n_runs)
@@ -74,13 +70,20 @@ def run_full_pipeline(
     # simulation calendar
     sim_cal = pd.bdate_range(sim_start, sim_end, freq="B")
 
-    # prepare containers
+    # collects metrics dict from MetricsResult class
     metrics = {k: [] for k in list(strategy_registry.keys()) + list(benchmark_registry.keys())}
+
+    # Welford-online collect for log-equity curves
     log_equity = {v.name: Welford() for v in list(strategy_registry.values()) + list(benchmark_registry.values())}
-    corr = []
+
+    # collects the selected tickers
     selections = {k: [] for k in list(strategy_registry.keys())}
-    # later need to distinguish if ML or not
-    train_coefs = {}
+
+    # Welford-online collect for training coefficients
+    train_coefs = {v.name: Welford() for v in list(strategy_registry.values())}
+
+    # collects one-factor universe correlaton for checks
+    corr = []
 
     # flag for once-per-run actions
     initial_run = True
@@ -140,19 +143,22 @@ def run_full_pipeline(
             selections[k].append({
                 "n_changes": len(changed),
                 "last_change": changed[-1] if changed else None,
-                "coef_last_month": meta["predictions_meta"]["coef_last_month"],
                 "selections": d
             })
-            # if not k in train_coefs:
-            #     train_coefs[k] = 
-            # train_coefs[k]
 
-            # collecting data
+            # collecting metrics
             metrics[k].append(res.compute_metrics())
+
+            # collecting log-equity
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
             log_equity[s.name].update(x)
+
+            # collecting coefs
+            coefs = meta["predictions_meta"]["training"]["coefs_by_month"]
+            coefs = pd.DataFrame.from_dict(coefs).to_numpy()
+            train_coefs[s.name].update(coefs)
 
 
         # logic to run benchmarks on investmentent horizon
@@ -164,17 +170,21 @@ def run_full_pipeline(
                 name=b.name
             )
 
-            # collecting data
+            # collecting metrics
             metrics[k].append(res.compute_metrics())
+
+            # collecting log-equity
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
             log_equity[b.name].update(x)
         
         initial_run = False
+
+
         if verbose:
             if (run_idx + 1) % max(1, n_runs // 10) == 0 or (run_idx + 1) == n_runs:
-                    logging.info(f"Progress {(run_idx + 1) / n_runs:.0%} ({run_idx+1}/{n_runs})")
+                logging.info(f"Progress {(run_idx + 1) / n_runs:.0%} ({run_idx+1}/{n_runs})")
 
     # years spanned by actual investment horizon
     T = years_spanned(px[(px.index >= strat_start) & (px.index <= strat_end)].index)
@@ -230,7 +240,8 @@ def run_full_pipeline(
         "mean_metrics": mean_metrics_df,
         "delta_log_growth": delta_log_growth_df,
         "delta_log_growth_stats": delta_log_growth_stats,
-        "selections": selections
+        "selections": selections,
+        "train_coefs": train_coefs
     }
 
     return results
