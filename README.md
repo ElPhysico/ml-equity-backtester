@@ -17,8 +17,8 @@ I started this project to learn workflows around **backtesting** and **machine l
     - Start here: [`01_gbm.ipynb`](notebooks/theory/01_gbm.ipynb)
   - Tutorials: learn how to use my framework for yourself - see `notebooks/tutorials/`
     - Start here: [`01_simulating_universes.ipynb`](notebooks/tutorials/01_simulating_universes.ipynb)
-  <!-- - Insights: strategy behavior in different environments — see `notebooks/insights/`
-    - Start here: [`01_gbm_regimes_overview.ipynb`](notebooks/insights/01_gbm_regimes_overview.ipynb) -->
+  - Insights: strategy research and insights — see `notebooks/insights/`
+    - Start here: [`01_enet_in_single_gbm_universe.ipynb`](notebooks/insights/01_enet_in_single_gbm_universe.ipynb)
 
 ---
 
@@ -31,7 +31,7 @@ dS_t = \mu S_tdt + \sigma S_tdW_t
 $$
 
 which implies **lognormal prices**,
-$\mathbb{E}[S_t]=S_0 e^{\mu t}$ and a **typical (geometric) growth** of
+$\mathbb{E}[S(t)]=S_0 e^{\mu t}$ and a **typical (geometric) growth** of
 $g=\mu-\tfrac12\sigma^2$ so the median path behaves like $S_0e^{gt}$.
 
 What GBM gets right: positivity, compounding, tractability.  
@@ -42,7 +42,7 @@ I progressively add those features (correlation, t‑tails, regime switches, etc
 - **Paradigm shifts:** piecewise constant $(\mu,\sigma)$ with switch points to mimic cycles.
 - **Mixed baskets:** combine different sub-baskets to a rich universe.
 
-<!-- See the visuals in `notebooks/insights/01_gbm_regimes_overview.ipynb`. -->
+See the visuals in `notebooks/tutorials/01_simulating_universes.ipynb`.
 
 ---
 
@@ -101,9 +101,9 @@ Outputs mirror the synthetic run. An example overlay vs benchmarks can be found 
 
 Even in GBM worlds, the **mean vs median** split matters, diversification reduces risk like $\sim 1/\sqrt{N}$ when names are i.i.d., and **regime switches** can whipsaw naive strategies. The **Insights** notebooks run BH/MR/ENet across bull/bear and low/high‑vol regimes and discuss expected behavior.
 
-<!-- - Start: `notebooks/insights/01_gbm_regimes_overview.ipynb`  
-- Planned: `notebooks/insights/02_strategy_perf_by_regime.ipynb` (per‑regime KPIs)
-- Planned: `notebooks/insights/03_cross_regime_summary.ipynb` (side‑by‑side comparison) -->
+- Start: `notebooks/insights/01_enet_in_single_gbm_universe.ipynb` (introduction to insight-framework)
+- Planned: `notebooks/insights/02_enet_ub_double_gbm_universe.ipynb` (introducing an edge for strategies)
+<!-- - Planned: `notebooks/insights/03_cross_regime_summary.ipynb` (side‑by‑side comparison) -->
 
 ---
 
@@ -133,7 +133,7 @@ Artifacts are deterministic under fixed seeds.
 
 ## Setup
 
-Key libraries: `numpy`, `pandas`, `scikit-learn`, `matplotlib`, `pyarrow`, `jupyter`, `python-dotenv`, `alpha_vantage`, managed via **Pixi**.  
+Key libraries: `numpy`, `pandas`, `scikit-learn`, `matplotlib`, `pyarrow`, `jupyter`, `python-dotenv`, `alpha_vantage`, `tabulate` managed via **Pixi**.  
 Install: `pixi install && pixi run dev-install`
 
 ---
