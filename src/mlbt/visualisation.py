@@ -7,7 +7,7 @@ This module holds tools and helpers to visualise a variety of data, such as equi
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from collections.abc import Sequence
+from collections.abc import Sequence, Callable
 
 import matplotlib as mpl
 from matplotlib.figure import Figure
@@ -15,6 +15,7 @@ from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 import matplotlib.dates as mdates
 import seaborn as sns
 
@@ -67,6 +68,9 @@ def _add_regime_shades(
 def plot_equities(
     equities: Sequence[StrategyResult] | Sequence[pd.Series] | StrategyResult | pd.Series,
     names: Sequence[str] | None = None,
+    bands: tuple[Sequence[pd.Series], Sequence[pd.Series]] | None = None,
+    title: str | None = None,
+    log_y: bool = False,
     save: bool = False,
     out_dir: Path | None = None,
     out_name: str = "equities.png"
@@ -96,8 +100,34 @@ def plot_equities(
     
     sns.set_theme(context="talk", style="whitegrid")
     fig = plt.figure(figsize=(12, 6))
-    sns.lineplot(data=df)
-    plt.title("Equity Curves (Rebased to 1.0 at T0)")
+
+    # curves
+    ax = sns.lineplot(data=df)
+
+    # bands
+    if bands is not None:
+        palette = sns.color_palette(n_colors=len(df.columns))
+        lower = bands[0]
+        upper = bands[1]
+        for i, name in enumerate(df.columns):
+            t = df.index
+            plt.fill_between(
+                t,
+                lower[name],
+                upper[name],
+                alpha=0.12,
+                color=palette[i]
+                # label=f"{name} 95% band"
+            )
+
+    if title is None:
+        title = "Normalised Equity Curves"
+    plt.title(title)
+    if log_y:
+        ax.set_yscale("log")
+        scalar_fmt = FuncFormatter(lambda y, _: f"{y:g}")
+        ax.yaxis.set_major_formatter(scalar_fmt)
+        ax.yaxis.set_minor_formatter(scalar_fmt)
     plt.xlabel("Date")
     plt.ylabel("Equity")
     plt.legend(title="Strategy", loc="best")
@@ -108,7 +138,7 @@ def plot_equities(
             plt.savefig(out_dir / out_name, dpi=150)
         else:
             raise ValueError(f"Cannot save figure as 'out_dir' is not specified.")    
-    plt.show()
+    # plt.show()
     return fig
 
 
@@ -178,7 +208,6 @@ def plot_universe(
     ax.set_yscale("log")
     ax.set_xlim(norm_px.index[0], norm_px.index[-1])
     ax.margins(x=0)
-    from matplotlib.ticker import FuncFormatter
     scalar_fmt = FuncFormatter(lambda y, _: f"{y:g}")
     ax.yaxis.set_major_formatter(scalar_fmt)
     ax.yaxis.set_minor_formatter(scalar_fmt)
@@ -199,7 +228,7 @@ def plot_ann_log_growth_statistics(
     y: str = "ann_log_growth",
     hue: str = "benchmark"
 ) -> tuple[Figure, Axes]:
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(12, 6))
     # if n_seeds >= 20:
     ax = sns.violinplot(
         data=df,
@@ -253,9 +282,70 @@ def plot_ann_log_growth_statistics(
 
     plt.tight_layout(rect=[0, 0.0, 1, 1.0])
 
-    plt.show()
+    # plt.show()
 
     return fig, ax
+
+
+def plot_vol_curve(
+    mean_df: pd.DataFrame,
+    bench: str
+) -> tuple[plt.Figure, plt.Axes]:
+    x = "n_tickers"
+    y = "vol_ann"
+    y_lo = "vol_ann_low"
+    y_hi = "vol_ann_high"
+    df_sorted = mean_df[[x, y, y_lo, y_hi]].dropna().sort_values(by=x).drop(bench)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.errorbar(
+        df_sorted[x],
+        df_sorted[y],
+        yerr=[df_sorted[y] - df_sorted[y_lo], df_sorted[y_hi] - df_sorted[y]],
+        fmt="o",
+        ecolor="black",
+        elinewidth=1,
+        capsize=3,
+        alpha=0.8,
+        # label="Sample mean vol for Top-N strategy"
+        label=r"$\sigma_\mathrm{Top-N}$"
+    )    
+
+    # plot theoretical scaling based on bench
+    mapping = {"Monthly Rebalance EW": "MR", "Buy & Hold EW": "BH"}
+    x_min, x_max = df_sorted[x].min(), df_sorted[x].max()
+    x_support = np.linspace(x_min, x_max, 1000)
+    for b in bench:
+        guide_vol = mean_df.loc[b, "vol_ann"]
+        K = mean_df.loc[b, "n_tickers"]
+        y = guide_vol * np.sqrt(K) / np.sqrt(x_support)
+        ax.plot(x_support, y, linestyle="--", label=fr"$\sigma_\mathrm{{{mapping[b]}}} \sqrt{{K/N}}$")
+
+
+    # guide_vol = mean_df.loc[bench, "vol_ann"] #* np.sqrt( 1/x )
+    # rho_bar = 7.426933439967973e-06
+    # K = mean_df.loc[bench, "n_tickers"]
+    # print(guide_vol, "theoretical guide vol:", 0.25/np.sqrt(K))
+    # num = (1.0 / x_support) + ((x_support - 1.0) / x_support) * rho_bar
+    # den = (1.0 / K) + ((K - 1.0) / K) * rho_bar
+    # y_support_adj = guide_vol * np.sqrt(num/den)
+    # y_theory = 0.25/np.sqrt(K) * np.sqrt(num/den)
+
+    # y_support = guide_vol * np.sqrt(K) / np.sqrt(x_support)
+    # ax.plot(x_support, y_support, color="red", linestyle="--", label="Theoretical ratio")
+    # ax.plot(x_support, y_support_adj, color="navy", linestyle="--", label="Theoretical ratio correlation adjusted", alpha=0.6)
+    # ax.plot(x_support, y_theory, color="purple", linestyle="--", label="Theoretical ratio correlation adjusted", alpha=0.6)
+
+    # print(df_sorted[y].values - guide_vol * np.sqrt(K) / np.sqrt(df_sorted[x].values))
+
+    fig.suptitle("Volatility scaling with Top-N")
+    ax.set_xlabel("N")
+    ax.set_ylabel("Annualized volatility")
+    ax.legend()
+    return fig, ax
+
+
+    
 
 # Plotting distributions #######################################################
 
