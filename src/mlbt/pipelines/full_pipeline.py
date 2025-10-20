@@ -18,6 +18,8 @@ from mlbt.outputs import cli_ann_log_growth_stats, md_ann_log_growth_stats, md_a
 from mlbt.log_utils import setup_logging
 from mlbt.visualisation import plot_equities, plot_ann_log_growth_statistics
 
+from mlbt.statistics.welford_aggregator import Welford
+
 
 def run_full_pipeline(
     *,
@@ -74,10 +76,11 @@ def run_full_pipeline(
 
     # prepare containers
     metrics = {k: [] for k in list(strategy_registry.keys()) + list(benchmark_registry.keys())}
-    mu_log = {}
-    m2_log = {}
+    log_equity = {v.name: Welford() for v in list(strategy_registry.values()) + list(benchmark_registry.values())}
     corr = []
-    selections = {k:[] for k in list(strategy_registry.keys())}
+    selections = {k: [] for k in list(strategy_registry.keys())}
+    # later need to distinguish if ML or not
+    train_coefs = {}
 
     # flag for once-per-run actions
     initial_run = True
@@ -140,18 +143,16 @@ def run_full_pipeline(
                 "coef_last_month": meta["predictions_meta"]["coef_last_month"],
                 "selections": d
             })
+            # if not k in train_coefs:
+            #     train_coefs[k] = 
+            # train_coefs[k]
 
             # collecting data
             metrics[k].append(res.compute_metrics())
-            if initial_run:
-                mu_log[s.name] = np.zeros(len(px_strat.index), dtype=np.float64)
-                m2_log[s.name] = np.zeros(len(px_strat.index), dtype=np.float64)
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
-            delta = x - mu_log[s.name]
-            mu_log[s.name] += delta / (run_idx+1)
-            m2_log[s.name] += delta * (x - mu_log[s.name])
+            log_equity[s.name].update(x)
 
 
         # logic to run benchmarks on investmentent horizon
@@ -165,15 +166,10 @@ def run_full_pipeline(
 
             # collecting data
             metrics[k].append(res.compute_metrics())
-            if initial_run:
-                mu_log[b.name] = np.zeros(len(px_strat.index), dtype=np.float64)
-                m2_log[b.name] = np.zeros(len(px_strat.index), dtype=np.float64)
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
-            delta = x - mu_log[b.name]
-            mu_log[b.name] += delta / (run_idx+1)
-            m2_log[b.name] += delta * (x - mu_log[b.name])
+            log_equity[b.name].update(x)
         
         initial_run = False
         if verbose:
@@ -188,16 +184,10 @@ def run_full_pipeline(
     logging.info(f"Mean one-factor universe correlation: {np.mean(corr):.5f}")
     logging.info(f"Investment horizon in years: {T:.2f}")
 
-    # sample variance and geometric mean + prediction band for equity curves
-    var_log = {k: v / (n_runs - 1) for k, v in m2_log.items()}
-    gm = {k: np.exp(v) for k, v in mu_log.items()}
-    z = 1.96
-    lower_pred = {k: np.exp(mu_log[k] - z * np.sqrt(var_log[k])) for k in mu_log.keys()}
-    upper_pred = {k: np.exp(mu_log[k] + z * np.sqrt(var_log[k])) for k in mu_log.keys()}
-    gm_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in gm.items()}
-    lower_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in lower_pred.items()}
-    upper_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in upper_pred.items()}
-    bands = (lower_s, upper_s)
+    # geometric mean log equity
+    g = {k: pd.Series(np.exp(v.mean), index=px_strat.index, name=k) for k,v in log_equity.items()}
+    l = {k: pd.Series(np.exp(v.ci95_typical[0]), index=px_strat.index, name=k) for k,v in log_equity.items()}
+    h = {k: pd.Series(np.exp(v.ci95_typical[1]), index=px_strat.index, name=k) for k,v in log_equity.items()}
 
     # statistics for delta log-growth
     delta_log_growth = []
@@ -236,7 +226,7 @@ def run_full_pipeline(
 
     results = {
         "years": T,
-        "geometric_mean_equity": (gm_s, bands),
+        "geometric_mean_equity": (g, (l, h)),
         "mean_metrics": mean_metrics_df,
         "delta_log_growth": delta_log_growth_df,
         "delta_log_growth_stats": delta_log_growth_stats,
