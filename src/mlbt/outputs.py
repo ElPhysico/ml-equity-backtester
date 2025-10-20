@@ -95,3 +95,26 @@ def md_ann_log_growth_stats_table(
             decision = "❌ *Fail to reject H₀*"
         sections.append(header + "\n\n" + "\n".join(table) + "\n\n" + decision)
     return "\n\n---\n\n".join(sections)
+
+
+def prep_metrics_df(
+    metrics_df: pd.DataFrame,
+    delta_log_growth_stats: pd.DataFrame
+) -> pd.DataFrame:
+    col_mapping = {
+        "total_return": "Total Return",
+        "cagr": "CAGR",
+        "arithmetic_mean": "Arithmetic Mean",
+        "vol_ann": "Vol",
+        "sharpe": "Sharpe",
+        "max_drawdown": "MaxDD",
+        "ann_turnover": "Turnover",
+    }
+
+    df = metrics_df.rename(columns=col_mapping)[list(col_mapping.values())]
+    tmp = delta_log_growth_stats.query('benchmark == "Monthly Rebalance EW"')[["strategy", "d", "win_rate"]]
+    df[["Delta log growth vs MR", "Win-rate vs MR"]] = (
+        tmp.set_index("strategy")[["d", "win_rate"]]
+        .reindex(df.index)   # align to df's order
+    )
+    return df.sort_values("Sharpe", ascending=False).round(4).to_markdown(index=True)
