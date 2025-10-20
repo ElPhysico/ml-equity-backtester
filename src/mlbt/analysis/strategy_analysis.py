@@ -6,6 +6,25 @@ import pandas as pd
 import numpy as np
 import scipy.stats as st
 from statsmodels.stats.proportion import proportion_confint
+from collections.abc import Sequence
+
+from mlbt.specs.metrics import MetricsResult
+
+
+def average_metricsresults(
+    v: Sequence[MetricsResult],
+    bootstrap_vol: bool = False
+) -> pd.Series:
+    df = pd.DataFrame([m.to_dict() for m in v]).drop(columns=["freq"], errors="ignore")
+    s = df.mean(numeric_only=True)
+
+    if bootstrap_vol:
+        ci = st.bootstrap((df["vol_ann"].to_numpy(),), np.mean,
+                        method="percentile", random_state=0).confidence_interval
+        s["vol_ann_low"] = float(ci.low)
+        s["vol_ann_high"] = float(ci.high)
+    return s
+
 
 def statistics_ann_log_growth(x: pd.Series, alt: str = "greater", cl: float = 0.95):
     arr = x.to_numpy()
