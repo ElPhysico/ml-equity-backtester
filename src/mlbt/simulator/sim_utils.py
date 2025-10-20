@@ -19,7 +19,7 @@ def generate_random_tickers(
     for L in lengths:
         while True:
             chars = rng.choice(alphabet, size=L)
-            ticker = prefix + ''.join(chars)
+            ticker = prefix + "_" + "".join(chars)
             if ticker not in tickers:
                 tickers.add(ticker)
                 break
