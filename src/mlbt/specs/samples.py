@@ -11,6 +11,21 @@ from mlbt.specs.strategy_spec import StrategySpec
 # some ready to use universes
 from mlbt.simulator.simulators import simulate_gbm_trajectories
 
+# Insights #####################################################################
+# univ_gbm_enet_single_regime = UniverseSpec(
+#     key="enet_single_regime",
+#     cls="GBM",
+#     sector="Insights",
+#     name="Insights single",
+#     simulator=simulate_gbm_trajectories,
+#     n_tickers=500,
+#     sim_params={
+#         "mu": [0.1],
+#         "sigma": [0.25]
+#     }
+# )
+
+
 # Demo universe ################################################################
 univ_gbm_demo = UniverseSpec(
     key="gbm_demo",
@@ -140,6 +155,15 @@ strat_enet_10_v0 = StrategySpec(
 )
 
 new_params = copy.deepcopy(strat_enet_10_v0.strat_params)
+new_params["backtest_params"]["N"] = 5
+strat_enet_5_v0 = replace(
+    strat_enet_10_v0,
+    key="enet_top5_v0",
+    name="ElasticNet Top-5",
+    strat_params=new_params
+)
+
+new_params = copy.deepcopy(strat_enet_10_v0.strat_params)
 new_params["backtest_params"]["N"] = 20
 strat_enet_20_v0 = replace(
     strat_enet_10_v0,
@@ -154,6 +178,15 @@ strat_enet_50_v0 = replace(
     strat_enet_10_v0,
     key="enet_top50_v0",
     name="ElasticNet Top-50",
+    strat_params=new_params
+)
+
+new_params = copy.deepcopy(strat_enet_10_v0.strat_params)
+new_params["backtest_params"]["N"] = 100
+strat_enet_100_v0 = replace(
+    strat_enet_10_v0,
+    key="enet_top100_v0",
+    name="ElasticNet Top-100",
     strat_params=new_params
 )
 
