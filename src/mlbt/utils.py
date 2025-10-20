@@ -368,7 +368,6 @@ def build_trainer_meta(
     features_used: list[str] | None = None,
     features_meta: dict[str, object] | None = None,
     label_meta: dict[str, object] | None = None,
-    coef_last_month: dict[str, float] | None = None,
     extra: dict[str, object] | None = None,
     compact_meta: bool = False
 ) -> dict[str, object]:
@@ -389,8 +388,6 @@ def build_trainer_meta(
         dictionary containing additional information about the features as returned by build_feature_panel_v0 for instance.
     label_meta : dict, optional
         dictionary containing additional information about the label as returned by build_label_panel_v0 for instance.
-    coef_last_month : dict, optional
-        dictionary containing the coefficients per feature for the last month.    
     extra : dict, optional
         Free-form additional fields merged at top level.
     compact_meta : bool, default False
@@ -421,8 +418,6 @@ def build_trainer_meta(
         meta["features_meta"] = features_meta
     if label_meta:
         meta["label_meta"] = label_meta
-    if coef_last_month:
-        meta["coef_last_month"] = coef_last_month
     if extra:
         meta["extra"] = extra
 
