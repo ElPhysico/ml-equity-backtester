@@ -5,18 +5,15 @@ This module holds a full pipeline for creating GBM universes, evaluating strateg
 import numpy as np
 import pandas as pd
 import logging
-import scipy.stats as st
-
-from matplotlib.figure import Figure
 
 from mlbt.specs.universe_spec import UniverseSpec
 from mlbt.specs.strategy_spec import StrategySpec
 from mlbt.calendar import build_month_end_grid, years_spanned
 from mlbt.simulator.simulators import simulate_universe
 from mlbt.analysis.strategy_analysis import statistics_ann_log_growth, average_metricsresults
-from mlbt.outputs import cli_ann_log_growth_stats, md_ann_log_growth_stats, md_ann_log_growth_stats_table
 from mlbt.log_utils import setup_logging
-from mlbt.visualisation import plot_equities, plot_ann_log_growth_statistics
+
+from mlbt.statistics.welford_aggregator import Welford
 
 
 def run_full_pipeline(
@@ -65,6 +62,7 @@ def run_full_pipeline(
         Dictionary containing the investment horizon in years, the geometric mean equity curve as tuple containing (curve, lower band, upper band), the mean metrics dataframe, the delta log growth dataframe, and a delta log growth statistics dataframe.
     """
     setup_logging(verbose=verbose)
+
     # initialize RNG
     ss_master = np.random.SeedSequence(master_seed)
     run_seqs = ss_master.spawn(n_runs)
@@ -72,12 +70,20 @@ def run_full_pipeline(
     # simulation calendar
     sim_cal = pd.bdate_range(sim_start, sim_end, freq="B")
 
-    # prepare containers
+    # collects metrics dict from MetricsResult class
     metrics = {k: [] for k in list(strategy_registry.keys()) + list(benchmark_registry.keys())}
-    mu_log = {}
-    m2_log = {}
+
+    # Welford-online collect for log-equity curves
+    log_equity = {v.name: Welford() for v in list(strategy_registry.values()) + list(benchmark_registry.values())}
+
+    # collects the selected tickers
+    selections = {k: [] for k in list(strategy_registry.keys())}
+
+    # Welford-online collect for training coefficients
+    train_coefs = {v.name: Welford() for v in list(strategy_registry.values())}
+
+    # collects one-factor universe correlaton for checks
     corr = []
-    selections = {k:[] for k in list(strategy_registry.keys())}
 
     # flag for once-per-run actions
     initial_run = True
@@ -97,6 +103,7 @@ def run_full_pipeline(
             )
             pxs.append(px)
         px_universe = pd.concat(pxs, axis=1)
+
         # correlation
         corr_matrix = px_universe.pct_change().corr().values
         mask = ~np.eye(corr_matrix.shape[0], dtype=bool)
@@ -106,7 +113,8 @@ def run_full_pipeline(
             logging.warning(f"[run {run_idx}] mean pairwise corr is {corr[-1]:.4f} (|rho|>0.02)")
 
         if initial_run:
-            me_grid = build_month_end_grid(px)      
+            me_grid = build_month_end_grid(px_universe)      
+
 
         # logic to run strategies
         for k, s in strategy_registry.items():
@@ -126,7 +134,7 @@ def run_full_pipeline(
                 logging.warning(f"Strategies have different starting dates, benchmarks will be run over last strategy's horizon.")
             if strat_end != meta["strategy"]["strategy_end"]:
                 logging.warning(f"Strategies have different ending dates, benchmarks will be run over last strategy's horizon.")
-            px_strat = px[(px.index >= strat_start) & (px.index <= strat_end)]
+            px_strat = px_universe[(px_universe.index >= strat_start) & (px_universe.index <= strat_end)]
 
             # selection data
             d = res.selections
@@ -135,21 +143,22 @@ def run_full_pipeline(
             selections[k].append({
                 "n_changes": len(changed),
                 "last_change": changed[-1] if changed else None,
-                "coef_last_month": meta["predictions_meta"]["coef_last_month"],
-                # "selections": d
+                "selections": d
             })
 
-            # collecting data
+            # collecting metrics
             metrics[k].append(res.compute_metrics())
-            if initial_run:
-                mu_log[s.name] = np.zeros(len(px_strat.index), dtype=np.float64)
-                m2_log[s.name] = np.zeros(len(px_strat.index), dtype=np.float64)
+
+            # collecting log-equity
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
-            delta = x - mu_log[s.name]
-            mu_log[s.name] += delta / (run_idx+1)
-            m2_log[s.name] += delta * (x - mu_log[s.name])
+            log_equity[s.name].update(x)
+
+            # collecting coefs
+            coefs = meta["predictions_meta"]["training"]["coefs_by_month"]
+            coefs = pd.DataFrame.from_dict(coefs).to_numpy()
+            train_coefs[s.name].update(coefs)
 
 
         # logic to run benchmarks on investmentent horizon
@@ -161,22 +170,21 @@ def run_full_pipeline(
                 name=b.name
             )
 
-            # collecting data
+            # collecting metrics
             metrics[k].append(res.compute_metrics())
-            if initial_run:
-                mu_log[b.name] = np.zeros(len(px_strat.index), dtype=np.float64)
-                m2_log[b.name] = np.zeros(len(px_strat.index), dtype=np.float64)
+
+            # collecting log-equity
             eq = res.equity.to_numpy()
             eq = eq / eq[0]
             x = np.log(eq)
-            delta = x - mu_log[b.name]
-            mu_log[b.name] += delta / (run_idx+1)
-            m2_log[b.name] += delta * (x - mu_log[b.name])
+            log_equity[b.name].update(x)
         
         initial_run = False
+
+
         if verbose:
             if (run_idx + 1) % max(1, n_runs // 10) == 0 or (run_idx + 1) == n_runs:
-                    logging.info(f"Progress {(run_idx + 1) / n_runs:.0%} ({run_idx+1}/{n_runs})")
+                logging.info(f"Progress {(run_idx + 1) / n_runs:.0%} ({run_idx+1}/{n_runs})")
 
     # years spanned by actual investment horizon
     T = years_spanned(px[(px.index >= strat_start) & (px.index <= strat_end)].index)
@@ -186,16 +194,10 @@ def run_full_pipeline(
     logging.info(f"Mean one-factor universe correlation: {np.mean(corr):.5f}")
     logging.info(f"Investment horizon in years: {T:.2f}")
 
-    # sample variance and geometric mean + prediction band for equity curves
-    var_log = {k: v / (n_runs - 1) for k, v in m2_log.items()}
-    gm = {k: np.exp(v) for k, v in mu_log.items()}
-    z = 1.96
-    lower_pred = {k: np.exp(mu_log[k] - z * np.sqrt(var_log[k])) for k in mu_log.keys()}
-    upper_pred = {k: np.exp(mu_log[k] + z * np.sqrt(var_log[k])) for k in mu_log.keys()}
-    gm_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in gm.items()}
-    lower_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in lower_pred.items()}
-    upper_s = {k: pd.Series(v, index=px_strat.index, name=f"{k}") for k,v in upper_pred.items()}
-    bands = (lower_s, upper_s)
+    # geometric mean log equity
+    g = {k: pd.Series(np.exp(v.mean), index=px_strat.index, name=k) for k,v in log_equity.items()}
+    l = {k: pd.Series(np.exp(v.ci95_typical[0]), index=px_strat.index, name=k) for k,v in log_equity.items()}
+    h = {k: pd.Series(np.exp(v.ci95_typical[1]), index=px_strat.index, name=k) for k,v in log_equity.items()}
 
     # statistics for delta log-growth
     delta_log_growth = []
@@ -234,11 +236,12 @@ def run_full_pipeline(
 
     results = {
         "years": T,
-        "geometric_mean_equity": (gm_s, bands),
+        "geometric_mean_equity": (g, (l, h)),
         "mean_metrics": mean_metrics_df,
         "delta_log_growth": delta_log_growth_df,
         "delta_log_growth_stats": delta_log_growth_stats,
-        "selections": selections
+        "selections": selections,
+        "train_coefs": train_coefs
     }
 
     return results

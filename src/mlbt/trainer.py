@@ -14,7 +14,6 @@ from portfolio construction. Use `mlbt.backtest_topn` or a pipeline in
 """
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
@@ -45,8 +44,8 @@ def walkforward_elasticnet_v0(
     ddof: int = 0,
     compact_meta: bool = False,
     write: bool = False,
-    out_dir: Optional[Path] = None
-) -> Tuple[pd.DataFrame, Dict]:
+    out_dir: Path | None = None
+) -> tuple[pd.DataFrame, dict[str, object]]:
     """
     Walk-forward ElasticNet using v0 feature/label builders (convenience wrapper).
 
@@ -141,10 +140,10 @@ def walkforward_elasticnet(
     l1_ratio: float = 0.5,
     random_state: int = 0,
     min_train_samples: int = 100,
-    features_meta: Optional[Dict] = None,
-    label_meta: Optional[Dict] = None,
+    features_meta: dict[str, object] | None = None,
+    label_meta: dict[str, object] | None = None,
     compact_meta: bool = False
-) -> Tuple[pd.DataFrame, Dict]:
+) -> tuple[pd.DataFrame, dict[str, object]]:
     """
     Walk-forward train/predict with ElasticNet given prebuilt panels.
 
@@ -188,8 +187,8 @@ def walkforward_elasticnet(
     months = panel.index.get_level_values("month").unique().sort_values()
 
     all_preds = []
-    train_rows_by_month: Dict[str, int] = {}
-    last_fitted_en = None
+    train_rows_by_month: dict[str, int] = {}
+    coefs_df = pd.DataFrame(index=months, columns=feature_cols, dtype=float)
 
     # walk forward training
     for m in months:
@@ -208,8 +207,11 @@ def walkforward_elasticnet(
             ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=random_state)
         )
         model.fit(X_train, y_train)
+
         train_rows_by_month[str(m)] = len(X_train)
-        last_fitted_en = model.named_steps["elasticnet"]
+        coef_arr = getattr(model.named_steps["elasticnet"], "coef_", None)
+        if coef_arr is not None and len(coef_arr) == len(feature_cols):
+            coefs_df.loc[m, feature_cols] = coef_arr.tolist()
 
         y_pred = model.predict(X_test)
         preds = pd.DataFrame(
@@ -218,17 +220,11 @@ def walkforward_elasticnet(
         ).sort_index()
         all_preds.append(preds)
 
-    coef_last_month: Dict[str, float] = {}
     if len(all_preds) == 0:
         empty_idx = features.index[:0]
         preds =  pd.DataFrame(index=empty_idx, columns=["y_true", "y_pred"], dtype=float)
     else:
         preds = pd.concat(all_preds).sort_index()
-        
-        if last_fitted_en is not None:
-            coef_arr = getattr(last_fitted_en, "coef_", None)
-            if coef_arr is not None and len(coef_arr) == len(feature_cols):
-                coef_last_month = dict(zip(feature_cols, coef_arr.tolist()))
 
     # meta data
     model_params = {
@@ -240,6 +236,7 @@ def walkforward_elasticnet(
     training_meta = {
         "min_train_samples": min_train_samples,
         "months_evaluated": preds.index.get_level_values("month").nunique() if not preds.empty else 0,
+        "coefs_by_month": coefs_df.dropna(how="all").to_dict(),
         "train_rows_by_month": train_rows_by_month
     }
     meta = build_trainer_meta(
@@ -249,7 +246,6 @@ def walkforward_elasticnet(
         features_used=feature_cols,
         features_meta=features_meta,
         label_meta=label_meta,
-        coef_last_month=coef_last_month,
         compact_meta=compact_meta
     )
 

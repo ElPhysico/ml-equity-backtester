@@ -19,7 +19,7 @@ def generate_random_tickers(
     for L in lengths:
         while True:
             chars = rng.choice(alphabet, size=L)
-            ticker = prefix + ''.join(chars)
+            ticker = prefix + "_" + "".join(chars)
             if ticker not in tickers:
                 tickers.add(ticker)
                 break
@@ -40,4 +40,4 @@ def generate_deterministic_tickers(
     if N < 1:
         return []
     width = max(min_width, len(str(start + N - 1)))
-    return [f"{prefix}{i:0{width}d}" for i in range(start, start + N)]
+    return [f"{prefix}_{i:0{width}d}" for i in range(start, start + N)]

@@ -5,9 +5,10 @@ from pathlib import Path
 from datetime import datetime, UTC
 import os
 import json
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Sequence, get_origin, Mapping, MutableMapping
 import inspect
 import logging
+from collections.abc import Sequence, Callable, Mapping, MutableMapping
+from typing import get_origin
 
 PROJECT_SENTINELS = ("pyproject.toml", ".git")
 
@@ -25,8 +26,8 @@ def validate_px_wide_index(px_wide: pd.DataFrame) -> None:
     
 def validate_px_wide_range(
     px_wide: pd.DataFrame,
-    data_start: Union[str, pd.Timestamp],
-    data_end: Union[str, pd.Timestamp]
+    data_start: str | pd.Timestamp,
+    data_end: str | pd.Timestamp
 ) -> None:
     """
     Raises ValueError if px_wide is empty or does not cover the time period indicated by data_start to data_end.
@@ -50,10 +51,10 @@ def validate_month_grid_index(month_grid: pd.DataFrame) -> None:
     
 def validate_columns_exist(
     df: pd.DataFrame,
-    cols: Union[str, Sequence[str]]
+    cols: str | Sequence[str]
 ) -> None:
     """
-    Raise ValueError if any of the required column(s) are missing in `df`. Accepts a single column name or a sequence of names.
+    Raise ValueError if object of the required column(s) are missing in `df`. Accepts a single column name or a sequence of names.
     """
     required = [cols] if isinstance(cols, str) else list(cols)
     missing = [c for c in required if c not in df.columns]
@@ -62,12 +63,12 @@ def validate_columns_exist(
         raise ValueError(f"Missing required column(s): {missing}")
     
 def validate_config(
-    config: Dict,
-    required: Union[str, Sequence[str]],
+    config: dict[str, object],
+    required: str | Sequence[str],
     log_name: str | None = None
 ) -> None:
     """
-    Raise ValueError if any of the required keyword(s) are missing in config. Accepts a single keyword or a sequence of keywords.
+    Raise ValueError if object of the required keyword(s) are missing in config. Accepts a single keyword or a sequence of keywords.
     """
     required = [required] if isinstance(required, str) else list(required)
     missing = [c for c in required if c not in config]
@@ -77,10 +78,78 @@ def validate_config(
 
 # ---------------- Helper ----------------
 
+def _is_sequence_but_not_str(x: object) -> bool:
+    return isinstance(x, Sequence) and not isinstance(x, (str, bytes))
+
+def normalize_to_list(
+    x: object,
+    *,
+    element_type: type | tuple[type, ...] | None = None,
+    allow_none: bool = True
+) -> list | None:
+    """
+    Normalize a value to a list:
+      - None -> None (if allow_none) else [None]
+      - scalar -> [scalar]
+      - sequence (not str/bytes) -> list(sequence)
+
+    Optionally validates each element's type via `element_type`.
+    """
+    if x is None:
+        return None if allow_none else [None]
+
+    if _is_sequence_but_not_str(x):
+        out = list(x)
+    else:
+        out = [x]
+
+    if element_type is not None:
+        bad = [i for i, v in enumerate(out) if v is not None and not isinstance(v, element_type)]
+        if bad:
+            raise TypeError(
+                f"Elements at positions {bad} are not of type {element_type}."
+            )
+    return out
+
+def broadcast_lists(
+    *lists: list | None,
+    target_len: int | None = None
+) -> tuple[list, ...]:
+    """
+    Broadcast multiple (possibly None) lists to a common length.
+    - object list of length 1 is repeated to target_len.
+    - lists already at target_len are kept.
+    - None becomes [None] * target_len.
+    - If there are conflicting lengths (>1 and unequal), raise ValueError.
+    """
+    # Determine target length if not given
+    lengths = [len(x) for x in lists if isinstance(x, list)]
+    if target_len is None:
+        target_len = max(lengths) if lengths else 1
+
+    # Validate non-broadcastable lengths
+    fixed_lengths = {L for L in lengths if L > 1}
+    if fixed_lengths and (len(fixed_lengths) > 1) and (target_len not in fixed_lengths):
+        raise ValueError(f"Conflicting lengths: {sorted(fixed_lengths)} (target_len={target_len}).")
+
+    out = []
+    for x in lists:
+        if x is None:
+            out.append([None] * target_len)
+        elif len(x) == 1:
+            out.append(x * target_len)
+        elif len(x) == target_len:
+            out.append(x)
+        else:
+            # len(x) > 1 and != target_len
+            raise ValueError(f"Cannot broadcast length {len(x)} to {target_len}.")
+    return tuple(out)
+
+
 def bind_config(
-        func: Callable[..., Any],
-        config: Dict[str, Any]
-) -> Dict[str, Any]:
+        func: Callable[..., object],
+        config: dict[str, object]
+) -> dict[str, object]:
     """
     Forward only keys that the func accepts.
     """
@@ -90,14 +159,14 @@ def bind_config(
         if k in sig.parameters
     }
 
-def _is_dict_annotation(ann: Any) -> bool:
-    """Return True if the annotation is dict-like (dict/Dict/Mapping/MutableMapping)."""
+def _is_dict_annotation(ann: object) -> bool:
+    """Return True if the annotation is dict-like (dict/dict/Mapping/MutableMapping)."""
     if ann is inspect._empty:
         return False
     origin = get_origin(ann) or ann
-    return origin in (dict, Dict, Mapping, MutableMapping)
+    return origin in (dict, dict, Mapping, MutableMapping)
 
-def dict_param_names(func: Callable[..., Any]) -> set[str]:
+def dict_param_names(func: Callable[..., object]) -> set[str]:
     """Names of parameters annotated as dict-like."""
     sig = inspect.signature(func)
     return {
@@ -107,10 +176,10 @@ def dict_param_names(func: Callable[..., Any]) -> set[str]:
     }
 
 def bind_nested_configs(
-    func: Callable[..., Any],
-    cfg: Mapping[str, Any],
-    schema_map: Mapping[str, Callable[..., Any]],
-) -> Dict[str, Any]:
+    func: Callable[..., object],
+    cfg: Mapping[str, object],
+    schema_map: Mapping[str, Callable[..., object]],
+) -> dict[str, object]:
     """
     Re-bind nested dict params using schema_map {param_name: sub_func}.
     Only processes keys present in cfg and whose values are dicts.
@@ -128,9 +197,9 @@ def bind_nested_configs(
     return out
 
 def clean_dict(
-    dic: Dict[str, Any],
-    allowed: Union[str, Sequence[str]]
-) -> Dict[str, Any]:
+    dic: dict[str, object],
+    allowed: str | Sequence[str]
+) -> dict[str, object]:
     if dic is not None:
         invalid = set(dic) - set(allowed)
         if invalid:
@@ -162,7 +231,7 @@ def to_iso_date(dt: pd.Timestamp) -> str:
     except Exception:
         return str(dt)
 
-def find_project_root(start: Optional[Path] = None) -> Path:
+def find_project_root(start: Path | None = None) -> Path:
     """
     Resolve the project root by:
       1) MLBT_ROOT env var, if set
@@ -186,13 +255,13 @@ def universe_id_from_grid(month_grid: pd.DataFrame) -> str:
     uh = sha1_of_str(",".join(tickers))
     return f"u{len(tickers)}_{uh[:6]}"
 
-def coverage_from_grid(month_grid: pd.DataFrame) -> Tuple[str, str]:
+def coverage_from_grid(month_grid: pd.DataFrame) -> tuple[str, str]:
     months = month_grid.index.get_level_values("month")
     start = str(months.min())  # "YYYY-MM"
     end   = str(months.max())  # "YYYY-MM"
     return start, end
 
-def config_hash(universe_hash: str, params: Dict[str, Any], feature_names: list[str]) -> str:
+def config_hash(universe_hash: str, params: dict[str, object], feature_names: list[str]) -> str:
     # Stable, readable-ish
     key = {
         "universe_hash": universe_hash,
@@ -201,7 +270,7 @@ def config_hash(universe_hash: str, params: Dict[str, Any], feature_names: list[
     }
     return sha1_of_str(json.dumps(key, sort_keys=True))
 
-def tickers_from_grid(month_grid: pd.DataFrame) -> List[str]:
+def tickers_from_grid(month_grid: pd.DataFrame) -> list[str]:
     """
     Return sorted unique tickers from a (month, ticker) MultiIndex grid.
     """
@@ -216,7 +285,7 @@ def universe_hash_from_grid(month_grid: pd.DataFrame) -> str:
     return sha1_of_str(",".join(tk))
 
 
-def universe_summary_from_grid(month_grid: pd.DataFrame) -> Dict[str, Any]:
+def universe_summary_from_grid(month_grid: pd.DataFrame) -> dict[str, object]:
     """
     Build a compact universe summary dict from a grid.
     """
@@ -234,15 +303,15 @@ def universe_summary_from_grid(month_grid: pd.DataFrame) -> Dict[str, Any]:
 def build_panel_meta(
     month_grid: pd.DataFrame,
     *,
-    feature_names: List[str],
-    params: Dict[str, Any],
+    feature_names: list[str],
+    params: dict[str, object],
     panel_name: str,
     panel_version: str = "v0",
-    extra: Optional[Dict[str, Any]] = None,
+    extra: dict[str, object] | None = None,
     compact_meta: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, object]:
     """
-    Construct a standardized metadata dict for any monthly panel.
+    Construct a standardized metadata dict for object monthly panel.
 
     Parameters
     ----------
@@ -271,7 +340,7 @@ def build_panel_meta(
     univ = universe_summary_from_grid(month_grid)
     cfg_hash = config_hash(univ["hash"], params, feature_names)
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, object] = {
         "created_at": utc_now_iso(),
         "panel": {"name": panel_name, "version": panel_version}
     }
@@ -294,17 +363,16 @@ def build_panel_meta(
 def build_trainer_meta(
     predictions: pd.DataFrame,
     *,
-    model_params: Dict[str, Any],
-    training_meta: Dict[str, Any],
-    features_used: Optional[List[str]] = None,
-    features_meta: Optional[Dict[str, Any]] = None,
-    label_meta: Optional[Dict[str, Any]] = None,
-    coef_last_month: Optional[Dict[str, float]] = None,
-    extra: Optional[Dict[str, Any]] = None,
+    model_params: dict[str, object],
+    training_meta: dict[str, object],
+    features_used: list[str] | None = None,
+    features_meta: dict[str, object] | None = None,
+    label_meta: dict[str, object] | None = None,
+    extra: dict[str, object] | None = None,
     compact_meta: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, object]:
     """
-    Construct a standardized metadata dictionary for any trainer.
+    Construct a standardized metadata dictionary for object trainer.
 
     Parameters
     ----------
@@ -313,15 +381,13 @@ def build_trainer_meta(
     model_params : dict
         Parameters used for the training model.
     training_meta : dict
-        Dictionary containing training information, such as min_train_samples, number of months that have been evaluated, training data per month, etc.
+        dictionary containing training information, such as min_train_samples, number of months that have been evaluated, training data per month, etc.
     features_used : list of str, optional
-        List of strings containing the names of the features used in training.
+        list of strings containing the names of the features used in training.
     features_meta : dict, optional
-        Dictionary containing additional information about the features as returned by build_feature_panel_v0 for instance.
+        dictionary containing additional information about the features as returned by build_feature_panel_v0 for instance.
     label_meta : dict, optional
-        Dictionary containing additional information about the label as returned by build_label_panel_v0 for instance.
-    coef_last_month : dict, optional
-        Dictionary containing the coefficients per feature for the last month.    
+        dictionary containing additional information about the label as returned by build_label_panel_v0 for instance.
     extra : dict, optional
         Free-form additional fields merged at top level.
     compact_meta : bool, default False
@@ -330,12 +396,12 @@ def build_trainer_meta(
     Returns
     -------
     meta : dict
-        Standardized trainer metadata including created_at, coverage, universe, model parameters, training meta, features meta, label meta, last month's coefficients, and any optional extra information.
+        Standardized trainer metadata including created_at, coverage, universe, model parameters, training meta, features meta, label meta, last month's coefficients, and object optional extra information.
     """
     start_month, end_month = coverage_from_grid(predictions)
     univ = universe_summary_from_grid(predictions)
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, object] = {
         "created_at": utc_now_iso()
     }
 
@@ -352,8 +418,6 @@ def build_trainer_meta(
         meta["features_meta"] = features_meta
     if label_meta:
         meta["label_meta"] = label_meta
-    if coef_last_month:
-        meta["coef_last_month"] = coef_last_month
     if extra:
         meta["extra"] = extra
 
@@ -362,24 +426,24 @@ def build_trainer_meta(
 
 def build_run_meta(
     predictions: pd.DataFrame,
-    res: Any,
+    res: object,
     *,
-    name: Optional[str],
-    backtest_params: Dict[str, Any],
+    name: str | None,
+    backtest_params: dict[str, object],
     runner_name: str,
-    runner_version: Optional[str] = None,
-    predictions_meta: Optional[Dict] = None,
-    metrics: Optional[Dict[str, Any]] = None,
-    extra: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    runner_version: str | None = None,
+    predictions_meta: dict | None = None,
+    metrics: dict[str, object] | None = None,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
     """
-    Construct a standardized metadata dictionary for any backtest or experiment run.
+    Construct a standardized metadata dictionary for object backtest or experiment run.
 
     Parameters
     ----------
     predictions : pandas.DataFrame
         MultiIndex (month, ticker) table used to infer coverage and universe summary.
-    res : Any
+    res : object
         StrategyResult-like object with `.rebal_dates` and `.name`; adds brief strategy info.
     name : str, optional
         Friendly label chosen by the user (appears in logs and filenames).
@@ -419,7 +483,7 @@ def build_run_meta(
     except Exception:
         strat_info = None
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, object] = {
         "created_at": utc_now_iso(),
         "runner": {"name": runner_name, "version": "-" if runner_version is None else runner_version},
         "name": name,
