@@ -55,7 +55,7 @@ def notebook_elasticNet_penalties(l1_ratio: float = 0.5) -> None:
     # Constraint functions
     L2 = np.sqrt(W1**2 + W2**2)                            # Ridge: ||w||_2
     L1 = np.abs(W1) + np.abs(W2)                           # Lasso: ||w||_1
-    EN = l1_ratio * L1 + (1 - l1_ratio) * 0.5 * (W1**2 + W2**2)
+    EN = l1_ratio * L1 + (1 - l1_ratio) * 0.5 * (W1**2 + W2**2) # scikit enet
 
     # Plot trio
     fig, axes = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
