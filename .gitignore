@@ -15,6 +15,7 @@
 # notebooks/dev.ipynb
 
 # temporary added for clean up
+/notebooks/insights/02_enet_in_double_gbm_universe.ipynb
 config/run.yaml
 config/run2.yaml
 config/universes/2025-09_default_universe_simple.txt
